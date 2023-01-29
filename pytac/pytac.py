@@ -2,6 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sympy as sp
+import scipy.signal as sig
+import control
 
 import graphviz
 
@@ -73,7 +75,6 @@ class tac_obj(object):
             kwargs = {}
             for akwarg in lskwargs:
                 elements = akwarg.split("=")
-                print(elements)
                 kwargs[elements[0]] = elements[1]
             kwargs["comment"] = ("".join(comment)).split("//")[0]
 
@@ -125,7 +126,6 @@ class tac_obj(object):
         self.graph = graphviz.Digraph("TAC Source")
         self.graph.graph_attr['rankdir'] = 'LR' 
         for ablock in self.blocks:
-            #print(ablock)
             if ablock["nature"] == "Sum":
                 ashape = "circle"
             elif ablock["nature"] == "Gain":
@@ -139,13 +139,188 @@ class tac_obj(object):
                            fontsize="8",
                            **ablock["attrs"])
         for alink in self.links:
-            print("All block:")
-            print(alink["attrs"])
             self.graph.edge(tail_name=alink["block_a"],
                            head_name=alink["block_b"],
                            label=alink["name"],
                            fontsize="7",
                            **alink["attrs"])
+def stripsrc(src="", block_names=[],
+            attr_string="# Remove this //color=red, style=dashed",
+            verbose=True):
+    """
+    **Arguments**:
+                
+        * src    : ('') 
+        * block_names    : ([]) 
+        * attr_string    : ('# Remove this //color=red,style=dashed') 
+        * verbose    : (True) ')
+    
+    **Returns**:
+    * 
+    """
+    if isinstance(src, list):
+        inputas = "list"
+        mysrc = src
+    elif isinstance(src, str):
+        inputas = "str"
+        mysrc = src.splitlines()
+    newlines = []
+    untouched = 0
+    modified = 0
+    removed = 0
+    for aline in mysrc:
+        code_line = aline.split("#")[0]
+        allnames = re.split(r"\s+", code_line)
+        tripped = False
+        for ablock in block_names:
+            if ablock in allnames:
+                tripped = True
+        if tripped:
+            if attr_string is not None:
+                print("Dashing : ", aline)
+                newlines.append(aline+attr_string)
+                modified += 1
+            else:
+                print("Not adding : ", aline)
+                removed += 1
+                pass
+        else:
+            untouched += 1
+            newlines.append(aline)
+    print(f"Untouched = {untouched}\nModified = {modified}\nRemoved = {removed}")
+    print(f"Total = {len(newlines)}")
+    if inputas == "list":
+        out = newlines
+    elif inputas == "str":
+        out = "\n".join(newlines)
+    return out
+
+def replacelines(src, added=[], removed=[],
+                 attr_string="# Remove this //color=red, style=dashed",
+                showdiff=True,
+                verbose=False):
+    """
+    replacelines
+        **Arguments** :
+        
+        * src    : 
+        * added    : ([]) 
+        * removed    : ([]) 
+        * attr_string    : ('# Remove this //color=red,style=dashed') 
+        * showdiff    : (True) 
+        **returns** :
+        
+    **Returns:**
+    * The modified source code
+    * The diff source code
+    """
+    print(f"Initial length {len(src.splitlines())}")
+    diffsrc = stripsrc(src=src, block_names=removed,
+                      attr_string=attr_string,
+                      verbose=verbose)
+    newsrc = stripsrc(src=src, block_names=removed,
+                      attr_string=None,
+                      verbose=verbose)
+    
+    if isinstance(added, list):
+        addlist = added
+    elif isinstance(added, str):
+        addlist = added.splitlines()
+    for anewline in addlist:
+        print("Appending ",anewline)
+        diffsrc = "\n".join((diffsrc,anewline))
+        newsrc = "\n".join((newsrc,anewline))
+    
+    if showdiff:
+        atac = tac_obj(src=diffsrc.splitlines())
+        atac.graph.view()
+    
+    print(f"New length {len(newsrc.splitlines())}")
+    print(f"Diff length {len(diffsrc.splitlines())}")
+    return newsrc, diffsrc
+
+
+def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
+             gain=None, phase=None,
+             input_block="In", output_block="Out",
+            attr_string="# //color=navyblue",
+            mode="string"):
+    """
+    make_PLL
+    
+    **Arguments** :
+    
+    * pll_params    : [dict]  
+        - "FINIT"
+        - "FMIN"
+        - "FMAX"
+        - "KP"
+        - "KI"
+        - "KLP"
+        - "PDTAU"
+    * u    : (None) Complex number for output gain (replaces `ug` and `phase`)
+    * ug    : (None) The amplitude of gain
+    * phase    : (None) [rad]
+    * input_block    : ('In') 
+    * output_block    : ('Out') 
+    * attr_string    : ('# Remove this //color=red,style=dashed') 
+    * mode           : ("string") otherwise: will return a list of lines
+    
+    **returns** : Either the  
+    * """
+    if u is not None:
+        theta = np.angle(u)
+        ug = np.abs(u)
+    else:
+        if gain is not None:
+            ug = gain
+        else:
+            ug = 1.
+        if phase is not None:
+            theta = phase
+        else:
+            theta = 0
+    ua = np.cos(theta)
+    ub = np.sin(theta)
+    ug = ug
+    
+    # The PLL arguments
+    argnames = ["FINIT", "FMIN", "FMAX", "KP", "KI", "KLP", "PDTAU"]
+    list_args = [format(pll_params[aname], ".2e") for aname in argnames]
+    param_string = ",".join(list_args)
+    
+    src = []
+    src.append(f"#\n")
+    src.append(f"# Line of filter for {basename} \n")
+    src.append(f"#\n")
+    
+    src.append(f"TAC_BLOCK {basename} PLL {param_string} {attr_string}\n")
+    
+    src.append(f"TAC_BLOCK {basename}_En Constant 1 {attr_string}\n")
+    src.append(f"TAC_BLOCK {basename}_Reset Constant 0 {attr_string}\n")
+    src.append(f"TAC_BLOCK ua_{basename} Gain {ua} {attr_string}\n")
+    src.append(f"TAC_BLOCK ub_{basename} Gain {ub} {attr_string}\n")
+    src.append(f"TAC_BLOCK ug_{basename} Gain {ug} {attr_string}\n")
+    sum_string = "\""
+    src.append(f"TAC_BLOCK {basename}_Sum Sum \\\"++\\\" {attr_string}\n")
+    
+    src.append(f"\n")
+    
+    src.append(f"TAC_LINK {basename}_Input	{input_block}	1	{basename}	1 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_En_Link	{basename}_En	1	{basename}	2 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_Reset_Link	{basename}_Reset	1 {basename}	3 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_cos	{basename}	1	ua_{basename}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_sin	{basename}	2	ub_{basename}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ua_Link	ua_{basename}	1	{basename}_Sum	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ub_Link	ub_{basename}	1	{basename}_Sum	2 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ug_Link	{basename}_Sum	1	ug_{basename}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_Output	ug_{basename}	1	{output_block}	1 {attr_string}\n")
+    
+    if mode == "string":
+        src = "".join(src)
+    else:
+        pass
+    return src
 
 
 def get_order(atf):
@@ -213,6 +388,7 @@ def params2source(params, basename="Filter_M0",
                  input_block="<in_block>",
                  output_block="<out_block>",
                  comments="Filter transfer function",
+                 attr_string="# //color=darkgreen",
                  printit=True):
     
     # Creating the list of block names
@@ -228,11 +404,13 @@ def params2source(params, basename="Filter_M0",
     src.append(f"#\n")
     for i, (ablockname, ablockparam) in enumerate(zip(block_names, params)):
         param_string = " ".join([format(f"{apar:.8e}") for apar in ablockparam])
+        if attr_string is not None:
+            param_string += attr_string
         src.append(f"TAC_BLOCK {ablockname} DigitalTF {param_string}\n")
     src.append(f"\n")
     
     for i, (block_a, block_b) in enumerate(zip(block_all[:-1], block_all[1:])):
-        src.append(f"TAC_LINK {basename}_L{i}	{block_a} 1	{block_b}	1\n")
+        src.append(f"TAC_LINK {basename}_L{i}	{block_a} 1	{block_b}	1 {attr_string}\n")
     
     
     src.append(f"\n")
