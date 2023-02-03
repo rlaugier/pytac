@@ -144,15 +144,16 @@ class tac_obj(object):
                            label=alink["name"],
                            fontsize="7",
                            **alink["attrs"])
-def stripsrc(src="", block_names=[],
-            attr_string="# Remove this //color=red, style=dashed",
+def stripsrc(src="", block_names=[],match_names=[],
+            attr_string=" # Remove this //color=red, style=dashed",
             verbose=True):
     """
     **Arguments**:
                 
         * src    : ('') 
-        * block_names    : ([]) 
-        * attr_string    : ('# Remove this //color=red,style=dashed') 
+        * block_names    : ([]) A list of block names. Will remove all concerned lines
+        * match_names    : ([]) A list of strings. Will remove lines that contain that string
+        * attr_string    : (' # Remove this //color=red,style=dashed') 
         * verbose    : (True) ')
     
     **Returns**:
@@ -175,6 +176,9 @@ def stripsrc(src="", block_names=[],
         for ablock in block_names:
             if ablock in allnames:
                 tripped = True
+        for amatch in match_names:
+            if amatch in aline:
+                tripped = True
         if tripped:
             if attr_string is not None:
                 print("Dashing : ", aline)
@@ -195,8 +199,8 @@ def stripsrc(src="", block_names=[],
         out = "\n".join(newlines)
     return out
 
-def replacelines(src, added=[], removed=[],
-                 attr_string="# Remove this //color=red, style=dashed",
+def replacelines(src, added=[], removed=[], match_names=[],
+                 attr_string=" # Remove this //color=red, style=dashed",
                 showdiff=True,
                 verbose=False):
     """
@@ -216,9 +220,11 @@ def replacelines(src, added=[], removed=[],
     """
     print(f"Initial length {len(src.splitlines())}")
     diffsrc = stripsrc(src=src, block_names=removed,
+                       match_names=match_names,
                       attr_string=attr_string,
                       verbose=verbose)
     newsrc = stripsrc(src=src, block_names=removed,
+                      match_names=match_names,
                       attr_string=None,
                       verbose=verbose)
     
@@ -243,7 +249,7 @@ def replacelines(src, added=[], removed=[],
 def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
              gain=None, phase=None,
              input_block="In", output_block="Out",
-            attr_string="# //color=navyblue",
+            attr_string=" # //color=navyblue",
             mode="string"):
     """
     make_PLL
@@ -388,7 +394,7 @@ def params2source(params, basename="Filter_M0",
                  input_block="<in_block>",
                  output_block="<out_block>",
                  comments="Filter transfer function",
-                 attr_string="# //color=darkgreen",
+                 attr_string=" # //color=darkgreen",
                  printit=True):
     
     # Creating the list of block names
@@ -491,7 +497,8 @@ def check_tac(tac_array, original_tf, zc=z_control):
 
 
 def get_stable_approx_inverse(atf, verbose=False, z=z,
-                             regularize=True):
+                             z_control=z_control,
+                              regularize=True):
     """
     Produces an approximate inverse following the method in Maggio2020
     
@@ -625,4 +632,56 @@ def build_notchfilter(f0_notch, reference_tf, order,
     numden = sig.butter(order, band_edges, fs=1/dt, btype="bandpass")
     the_tf_notch = -ref_gain * control.tf(*numden, dt=dt, )
     return the_tf_notch
+
+from scipy.interpolate import interp1d
+def resample(x, y, master, be=True):
+    """Just a macro for interp1d"""
+    values = interp1d(x, y, fill_value=np.nan, bounds_error=be, )(master)
+    return values
+
+def get_TF(t, x, y, nps=None, axis=0):
+    """      
+    Compute the TF from measurements
+            **Arguments** :
+            
+            * t    : Timestamps (used to get sample freq)
+            * x    : Input time series
+            * y    : Output time series
+            * nps    : (None) nperseg for scipy.signal functions
+            * axis    : (0) axis for scip.signal functions
+            
+            **returns** : 
+            * """
+    nps = 1e3
+    fs = 1/np.mean(np.gradient(t))
+    f1, csd = sig.csd(x, y,
+                      nperseg=nps, fs=fs, axis=axis )
+    f2, psd = sig.welch(x, nperseg=nps, fs=fs,
+                       axis=axis)
+    TFsig = csd/psd
+    print("Same sampling=", np.allclose(f1, f2))
+    return f1, TFsig
+
+
+#import sympy as sp
+#s, z = sp.symbols("s, z")
+def control2sp(atf, asymbol):
+    alist = [a * asymbol**i  for i, a in enumerate(np.flip(atf.num[0][0]))]
+    num = sp.Add(*alist)
+    alist = [a * asymbol**i  for i, a in enumerate(np.flip(atf.den[0][0]))]
+    den = sp.Add(*alist)
+    return num/den
+def sp2control(atf, T_symbol, dt=1):
     
+    num, den = atf.subs([(T_symbol, dt)]).as_numer_denom()
+    if num.as_poly() is not None:
+        numfloat = np.array(num.as_poly().all_coeffs(), dtype=np.float64)
+    else:
+        numfloat = 1
+    if den.as_poly() is not None:
+        denfloat = np.array(den.as_poly().all_coeffs(), dtype=np.float64)
+    else:
+        denfloat = 1
+    H = control.tf(numfloat, denfloat , dt=dt)
+    return H
+
