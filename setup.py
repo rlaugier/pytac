@@ -17,7 +17,7 @@ setup(name='pytac',
       ],
       packages=['pytac'],
       install_requires=[
-          'numpy', 'sympy', 'scipy', 'matplotlib', 'control', 'graphviz'
+          'numpy', 'sympy', 'scipy', 'matplotlib', 'control', 'graphviz', 'art'
       ],
       include_package_data=True,
       zip_safe=False)

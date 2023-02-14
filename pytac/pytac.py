@@ -13,6 +13,9 @@ s, z = sp.symbols("s, z")
 
 import graphviz
 import re
+
+    
+
 class tac_obj(object):
     """
     A TAC application object used to graph the application from a source code
@@ -315,8 +318,8 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
     src.append(f"TAC_LINK {basename}_Input	{input_block}	1	{basename}	1 {attr_string}\n" )
     src.append(f"TAC_LINK {basename}_En_Link	{basename}_En	1	{basename}	2 {attr_string}\n" )
     src.append(f"TAC_LINK {basename}_Reset_Link	{basename}_Reset	1 {basename}	3 {attr_string}\n" )
-    src.append(f"TAC_LINK {basename}_cos	{basename}	1	ua_{basename}	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_sin	{basename}	2	ub_{basename}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_cos	{basename}	2	ua_{basename}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_sin	{basename}	3	ub_{basename}	1 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ua_Link	ua_{basename}	1	{basename}_Sum	1 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ub_Link	ub_{basename}	1	{basename}_Sum	2 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ug_Link	{basename}_Sum	1	ug_{basename}	1 {attr_string}\n")
@@ -409,7 +412,7 @@ def params2source(params, basename="Filter_M0",
     src.append(f"# Line of filter for {basename}\n")
     src.append(f"#\n")
     for i, (ablockname, ablockparam) in enumerate(zip(block_names, params)):
-        param_string = " ".join([format(f"{apar:.8e}") for apar in ablockparam])
+        param_string = " ".join([format(f"{apar:.15e}") for apar in ablockparam])
         if attr_string is not None:
             param_string += attr_string
         src.append(f"TAC_BLOCK {ablockname} DigitalTF {param_string}\n")
@@ -639,7 +642,7 @@ def resample(x, y, master, be=True):
     values = interp1d(x, y, fill_value=np.nan, bounds_error=be, )(master)
     return values
 
-def get_TF(t, x, y, nps=None, axis=0):
+def get_TF(t, x, y, nps=None, axis=0, get_coh=False):
     """      
     Compute the TF from measurements
             **Arguments** :
@@ -652,7 +655,8 @@ def get_TF(t, x, y, nps=None, axis=0):
             
             **returns** : 
             * """
-    nps = 1e3
+    if nps is None:
+        nps = 1e3
     fs = 1/np.mean(np.gradient(t))
     f1, csd = sig.csd(x, y,
                       nperseg=nps, fs=fs, axis=axis )
@@ -660,7 +664,12 @@ def get_TF(t, x, y, nps=None, axis=0):
                        axis=axis)
     TFsig = csd/psd
     print("Same sampling=", np.allclose(f1, f2))
-    return f1, TFsig
+    if not get_coh:
+        return f1, TFsig
+    else:
+        f3, coh = sig.coherence(x, y, fs=fs, nperseg=nps)
+        print("Same sampling=", np.allclose(f1, f3))
+        return f1, TFsig, coh
 
 
 #import sympy as sp

@@ -16,4 +16,5 @@ Currently, the package is in development
 * numpy
 * matplotlib
 * graphviz
+* art
 
