@@ -9,6 +9,11 @@ Currently, the package is in development
 
 ## Features
 
+* Building broadband and narrowband filters for feed-forward active control
+* Building and modifying TAC files 
+* DOT and graphviz visualization of TAC files
+* Compute empirical transfer functions
+
 ## Dependencies
 
 * scipy
