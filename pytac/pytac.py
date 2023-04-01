@@ -135,7 +135,7 @@ class tac_obj(object):
                 ashape = "cds"
             else:
                 ashape = "rectangle"
-            argstr = str(ablock["args"])[:12] + "..."
+            argstr = str(ablock["args"])[:20] + "..."
             self.graph.node(name=ablock["name"],
                             label=f"{ablock['name']}\n{ablock['nature']}\n{argstr}",
                             shape=ashape,
@@ -147,6 +147,32 @@ class tac_obj(object):
                            label=alink["name"],
                            fontsize="7",
                            **alink["attrs"])
+
+def PLL_summary(the_PLLs):
+    """
+    Output a table of all PLLs involved
+    
+    * the_PLLs : a list of lists of dictionaries holding the PLL parameters
+    
+    Returns:
+    * A table of the parameters, markdown format
+    """
+    mytab = []
+    mytab.append(f"| UT | Identifier | Frequency [Hz] | Fmin [Hz] | Fmax[Hz] |tau [s] | Amp measured | Phase Measured [rad] |\n")
+    mytab.append("|----|------------|----------------|-----------|----------|--------|--------------|----------------------|\n")
+    for i, aUT in enumerate(the_PLLs, start=1):
+        for apll in aUT:
+            mytab.append(f"|{i}\
+            |{apll['name']}\
+            |{apll['FINIT']:.1f}\
+            |{apll['FMIN']:.1f}\
+            |{apll['FMAX']:.1f}|\
+            {apll['PDTAU']:.2f}\
+            |{apll['gain']:.2f}\
+            |{apll['phase']:.2f}|\n")
+    mytab = "".join(mytab)
+    return mytab
+
 def stripsrc(src="", block_names=[],match_names=[],
             attr_string=" # Remove this //color=red, style=dashed",
             verbose=True):
@@ -204,6 +230,7 @@ def stripsrc(src="", block_names=[],match_names=[],
 
 def replacelines(src, added=[], removed=[], match_names=[],
                  attr_string=" # Remove this //color=red, style=dashed",
+                add_vibid=False,
                 showdiff=True,
                 verbose=False):
     """
@@ -231,12 +258,17 @@ def replacelines(src, added=[], removed=[], match_names=[],
                       attr_string=None,
                       verbose=verbose)
     
+    if add_vibid is not False:
+        if verbose:
+            print(f"Adding {add_vibid}")
+        newsrc = re.sub(r'(\nTAC_VERSION.*\n)', f"\\1\n{add_vibid}", newsrc)
     if isinstance(added, list):
         addlist = added
     elif isinstance(added, str):
         addlist = added.splitlines()
     for anewline in addlist:
-        print("Appending ",anewline)
+        if verbose:
+            print("Appending ",anewline)
         diffsrc = "\n".join((diffsrc,anewline))
         newsrc = "\n".join((newsrc,anewline))
     
@@ -249,11 +281,14 @@ def replacelines(src, added=[], removed=[], match_names=[],
     return newsrc, diffsrc
 
 
-def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
+def assemble_PLL(pll_params, basename=None, u=None,
              gain=None, phase=None,
              input_block="In", output_block="Out",
             attr_string=" # //color=navyblue",
-            mode="string"):
+            mode="string",
+            input_filter=None,
+            sim_input=False,
+            enable=1):
     """
     make_PLL
     
@@ -267,6 +302,9 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
         - "KI"
         - "KLP"
         - "PDTAU"
+        - "name"
+        - "phase"
+    * basename : (None) name used fo the 
     * u    : (None) Complex number for output gain (replaces `ug` and `phase`)
     * ug    : (None) The amplitude of gain
     * phase    : (None) [rad]
@@ -274,9 +312,12 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
     * output_block    : ('Out') 
     * attr_string    : ('# Remove this //color=red,style=dashed') 
     * mode           : ("string") otherwise: will return a list of lines
+    * enable         : (int 0 or 1) the value to the enable line
     
     **returns** : Either the  
     * """
+    if basename is None:
+        basename = pll_params["name"]
     if u is not None:
         theta = np.angle(u)
         ug = np.abs(u)
@@ -293,7 +334,7 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
     ub = np.sin(theta)
     ug = ug
     
-    # The PLL arguments
+    # The PLL arArithmeticErrorguments
     argnames = ["FINIT", "FMIN", "FMAX", "KP", "KI", "KLP", "PDTAU"]
     list_args = [format(pll_params[aname], ".2e") for aname in argnames]
     param_string = ",".join(list_args)
@@ -303,19 +344,24 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
     src.append(f"# Line of filter for {basename} \n")
     src.append(f"#\n")
     
+    print(len(src))
+    if input_filter is not None:
+        src.append(input_filter)
+        print(len(src))
     src.append(f"TAC_BLOCK {basename} PLL {param_string} {attr_string}\n")
     
-    src.append(f"TAC_BLOCK {basename}_En Constant 1 {attr_string}\n")
+    src.append(f"TAC_BLOCK {basename}_En Constant {enable} {attr_string}\n")
     src.append(f"TAC_BLOCK {basename}_Reset Constant 0 {attr_string}\n")
-    src.append(f"TAC_BLOCK ua_{basename} Gain {ua} {attr_string}\n")
-    src.append(f"TAC_BLOCK ub_{basename} Gain {ub} {attr_string}\n")
-    src.append(f"TAC_BLOCK ug_{basename} Gain {ug} {attr_string}\n")
-    sum_string = "\""
+    src.append(f"TAC_BLOCK ua_{basename} Gain {ua:.3e} {attr_string}\n")
+    src.append(f"TAC_BLOCK ub_{basename} Gain {ub:.3e} {attr_string}\n")
+    src.append(f"TAC_BLOCK ug_{basename} Gain {ug:.3e} {attr_string}\n")
+    # sum_string = "\""
     src.append(f"TAC_BLOCK {basename}_Sum Sum \\\"++\\\" {attr_string}\n")
     
     src.append(f"\n")
     
-    src.append(f"TAC_LINK {basename}_Input	{input_block}	1	{basename}	1 {attr_string}\n" )
+    if input_block is not None: # If we have added input filter, then there is no need to add an input link
+        src.append(f"TAC_LINK {basename}_Input	{input_block}	1	{basename}	1 {attr_string}\n" )
     src.append(f"TAC_LINK {basename}_En_Link	{basename}_En	1	{basename}	2 {attr_string}\n" )
     src.append(f"TAC_LINK {basename}_Reset_Link	{basename}_Reset	1 {basename}	3 {attr_string}\n" )
     src.append(f"TAC_LINK {basename}_cos	{basename}	2	ua_{basename}	1 {attr_string}\n")
@@ -324,6 +370,8 @@ def assemble_PLL(pll_params, basename="PLL_Mx", u=None,
     src.append(f"TAC_LINK {basename}_ub_Link	ub_{basename}	1	{basename}_Sum	2 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ug_Link	{basename}_Sum	1	ug_{basename}	1 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_Output	ug_{basename}	1	{output_block}	1 {attr_string}\n")
+    
+    # Adding simulated input
     
     if mode == "string":
         src = "".join(src)
@@ -405,7 +453,8 @@ def params2source(params, basename="Filter_M0",
     # Adding the output and input blocks
     block_all = block_names.copy()
     block_all.insert(0,input_block)
-    block_all.append(output_block)
+    if output_block is not None:
+        block_all.append(output_block)
     
     src = []
     src.append(f"#\n")
