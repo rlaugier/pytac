@@ -288,6 +288,7 @@ def assemble_PLL(pll_params, basename=None, u=None,
             mode="string",
             input_filter=None,
             sim_input=False,
+            inverse_output=True,
             enable=1):
     """
     make_PLL
@@ -304,6 +305,8 @@ def assemble_PLL(pll_params, basename=None, u=None,
         - "PDTAU"
         - "name"
         - "phase"
+        - "sum_input" : The index of input to which the output
+          is connected
     * basename : (None) name used fo the 
     * u    : (None) Complex number for output gain (replaces `ug` and `phase`)
     * ug    : (None) The amplitude of gain
@@ -312,10 +315,15 @@ def assemble_PLL(pll_params, basename=None, u=None,
     * output_block    : ('Out') 
     * attr_string    : ('# Remove this //color=red,style=dashed') 
     * mode           : ("string") otherwise: will return a list of lines
+    * inverse_output : (True) caters for unexpected sign of the PLL
     * enable         : (int 0 or 1) the value to the enable line
     
     **returns** : Either the  
     * """
+    if "sum_input" in pll_params.keys():
+        output_index = pll_params["sum_input"]
+    else:
+        output_index = 1
     if basename is None:
         basename = pll_params["name"]
     if u is not None:
@@ -332,7 +340,10 @@ def assemble_PLL(pll_params, basename=None, u=None,
             theta = 0
     ua = np.cos(theta)
     ub = np.sin(theta)
-    ug = ug
+    if inverse_output:
+        ug = -1 * ug
+    else:
+        ug = ug
     
     # The PLL arArithmeticErrorguments
     argnames = ["FINIT", "FMIN", "FMAX", "KP", "KI", "KLP", "PDTAU"]
@@ -369,7 +380,7 @@ def assemble_PLL(pll_params, basename=None, u=None,
     src.append(f"TAC_LINK {basename}_ua_Link	ua_{basename}	1	{basename}_Sum	1 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ub_Link	ub_{basename}	1	{basename}_Sum	2 {attr_string}\n")
     src.append(f"TAC_LINK {basename}_ug_Link	{basename}_Sum	1	ug_{basename}	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_Output	ug_{basename}	1	{output_block}	1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_Output	ug_{basename}	1	{output_block}	{output_index} {attr_string}\n")
     
     # Adding simulated input
     
