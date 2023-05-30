@@ -33,8 +33,10 @@ def double_integrate_psd(f,acc_psd):
     return( f[1:], psd_pos)
 
 def get_mosaic(filename, plot_path="./",
+                            plot_suffix=".png",
                             showall=True,
-                            saveall=True):
+                            saveall=True,
+                            faulty_matrix=None):
     """
             get_mosaic: 
             **Arguments** :
@@ -61,18 +63,21 @@ def get_mosaic(filename, plot_path="./",
               V2acc_gain*1.9822]       #Acc12
 
     # 0: OK (white), 1: Faulty (Orange), 2: not-yet-installed (Grey)
-    faulty = [[0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [2, 2, 2, 2],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 0, 0],
-              [0, 0, 1, 1],
-              [0, 0, 0, 0]]
+    if faulty_matrix is None:
+        faulty = [[0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [2, 2, 2, 2],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0],
+                  [0, 0, 0, 0]]
+    else:
+        faulty = faulty__matrix
 
     # %% Accelerometers [m/s^2]
 
@@ -97,7 +102,7 @@ def get_mosaic(filename, plot_path="./",
 
     fig1.tight_layout()
     if saveall:
-        fig1.savefig(f"{plot_path}AccelWaveform.png")
+        fig1.savefig(f"{plot_path}AccelWaveform{plot_suffix}")
     if showall:
         plt.show()
 
@@ -122,7 +127,7 @@ def get_mosaic(filename, plot_path="./",
 
     fig2.tight_layout()
     if saveall:
-        fig2.savefig(f"{plot_path}AccelSpectrum.png")
+        fig2.savefig(f"{plot_path}AccelSpectrum{plot_suffix}")
     if showall:
         plt.show()
 
@@ -148,7 +153,7 @@ def get_mosaic(filename, plot_path="./",
 
     fig3.tight_layout()
     if saveall:
-        fig3.savefig(f"{plot_path}PosSpectrum.png")
+        fig3.savefig(f"{plot_path}PosSpectrum{plot_suffix}")
     if showall:
         plt.show()
 
@@ -177,7 +182,7 @@ def get_mosaic(filename, plot_path="./",
 
     fig4.tight_layout()
     if saveall:
-        fig4.savefig(f"{plot_path}RevCumSpectrum.png")
+        fig4.savefig(f"{plot_path}RevCumSpectrum{plot_suffix}")
     if showall:
         plt.show()
 
