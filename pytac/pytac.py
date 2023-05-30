@@ -306,6 +306,7 @@ def assemble_PLL(pll_params, basename=None, u=None,
         - "name"
         - "phase"
         - "sum_input" : The index of input to which the output
+        - "input_block" The block to use as input (supersedes)
           is connected
     * basename : (None) name used fo the 
     * u    : (None) Complex number for output gain (replaces `ug` and `phase`)
@@ -324,12 +325,16 @@ def assemble_PLL(pll_params, basename=None, u=None,
         output_index = pll_params["sum_input"]
     else:
         output_index = 1
+    if "input_block" in pll_params.keys():
+        input_block = pll_params["input_block"]
     if basename is None:
         basename = pll_params["name"]
     if u is not None:
         theta = np.angle(u)
         ug = np.abs(u)
     else:
+        # Caution: sign of ug is changed later by 
+        # `inverse_output`
         if gain is not None:
             ug = gain
         else:
@@ -338,12 +343,13 @@ def assemble_PLL(pll_params, basename=None, u=None,
             theta = phase
         else:
             theta = 0
-    ua = np.cos(theta)
-    ub = np.sin(theta)
     if inverse_output:
         ug = -1 * ug
     else:
         ug = ug
+    # ua and ub constitute first row of rotaion matrix
+    ua = np.cos(theta)
+    ub = - np.sin(theta)
     
     # The PLL arArithmeticErrorguments
     argnames = ["FINIT", "FMIN", "FMAX", "KP", "KI", "KLP", "PDTAU"]
@@ -372,15 +378,15 @@ def assemble_PLL(pll_params, basename=None, u=None,
     src.append(f"\n")
     
     if input_block is not None: # If we have added input filter, then there is no need to add an input link
-        src.append(f"TAC_LINK {basename}_Input	{input_block}	1	{basename}	1 {attr_string}\n" )
-    src.append(f"TAC_LINK {basename}_En_Link	{basename}_En	1	{basename}	2 {attr_string}\n" )
-    src.append(f"TAC_LINK {basename}_Reset_Link	{basename}_Reset	1 {basename}	3 {attr_string}\n" )
-    src.append(f"TAC_LINK {basename}_cos	{basename}	2	ua_{basename}	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_sin	{basename}	3	ub_{basename}	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_ua_Link	ua_{basename}	1	{basename}_Sum	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_ub_Link	ub_{basename}	1	{basename}_Sum	2 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_ug_Link	{basename}_Sum	1	ug_{basename}	1 {attr_string}\n")
-    src.append(f"TAC_LINK {basename}_Output	ug_{basename}	1	{output_block}	{output_index} {attr_string}\n")
+        src.append(f"TAC_LINK {basename}_Input    {input_block}    1    {basename}    1 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_En_Link    {basename}_En    1    {basename}    2 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_Reset_Link    {basename}_Reset    1 {basename}    3 {attr_string}\n" )
+    src.append(f"TAC_LINK {basename}_cos    {basename}    3    ua_{basename}    1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_sin    {basename}    2    ub_{basename}    1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ua_Link    ua_{basename}    1    {basename}_Sum    1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ub_Link    ub_{basename}    1    {basename}_Sum    2 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_ug_Link    {basename}_Sum    1    ug_{basename}    1 {attr_string}\n")
+    src.append(f"TAC_LINK {basename}_Output    ug_{basename}    1    {output_block}    {output_index} {attr_string}\n")
     
     # Adding simulated input
     
@@ -479,7 +485,7 @@ def params2source(params, basename="Filter_M0",
     src.append(f"\n")
     
     for i, (block_a, block_b) in enumerate(zip(block_all[:-1], block_all[1:])):
-        src.append(f"TAC_LINK {basename}_L{i}	{block_a} 1	{block_b}	1 {attr_string}\n")
+        src.append(f"TAC_LINK {basename}_L{i}    {block_a} 1    {block_b}    1 {attr_string}\n")
     
     
     src.append(f"\n")
