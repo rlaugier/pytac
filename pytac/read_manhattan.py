@@ -32,7 +32,20 @@ def double_integrate_psd(f,acc_psd):
     
     return( f[1:], psd_pos)
 
-def get_mosaic(filename, plot_path="./",
+base_faulty = [[0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [2, 2, 2, 2],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0]]
+
+def get_mosaic(file, plot_path="./",
                             plot_suffix=".png",
                             showall=True,
                             saveall=True,
@@ -40,7 +53,8 @@ def get_mosaic(filename, plot_path="./",
     """
             get_mosaic: 
             **Arguments** :
-    * `filename`   : Path to fits file
+    * `file`       : Path to fits file
+      OR hdu list
     * `plot_path`  : ('./') Path to output some plots
     * `showall`    : (True) Whether to save the plots
     * `saveall`    : (True) Whether to 
@@ -48,6 +62,8 @@ def get_mosaic(filename, plot_path="./",
     **returns** : 
     * figs :  a list of figures
     """
+    print("#################")
+    print(file, flush=True)
     V2acc_gain = 0.01
     coeffs = [V2acc_gain*np.sqrt(2.0), #Acc1
               V2acc_gain*np.sqrt(2.0), #Acc2
@@ -77,17 +93,24 @@ def get_mosaic(filename, plot_path="./",
                   [0, 0, 0, 0],
                   [0, 0, 0, 0]]
     else:
-        faulty = faulty__matrix
+        faulty = faulty_matrix
 
     # %% Accelerometers [m/s^2]
 
     fig1, axarr1 = plt.subplots(12, 4, sharex=True, sharey=True, figsize=(12, 16))
 
+    if isinstance(file, str):
+        print("Loading from the path")
+        hdul = fits.open(file)
+    elif isinstance(file, list):
+        print("Using file as hdul")
+        hdul = file
     for tel in range(4):
-        accel = fits.getdata(filename, f'MAH-UT{np.abs(tel+1)}')
+        accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
+        # accel = fits.getdata(filename, f'MAH-UT{np.abs(tel+1)}')
         for chan in range(12):
             axarr1[chan, tel].plot(accel['RAW'][:1000, chan]*coeffs[chan])
-
+    hdul.close()
     axarr1[0, 0].set_ylim(-0.1, 0.1)
     for tel in range(4):
         axarr1[0, tel].set_title(f'UT{tel+1}')
@@ -112,7 +135,8 @@ def get_mosaic(filename, plot_path="./",
 
     for tel in range(4):
         axarr2[0, tel].set_title(f'UT{tel+1}')
-        accel = fits.getdata(filename, f'MAH-UT{tel+1}')
+        accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
+        # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
             freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
             if faulty[chan][tel]==1:
@@ -137,7 +161,8 @@ def get_mosaic(filename, plot_path="./",
 
     for tel in range(4):
         axarr3[0, tel].set_title(f'UT{tel+1}')
-        accel = fits.getdata(filename, f'MAH-UT{tel+1}')
+        accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
+        # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
             freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
             freq, psd_pos = double_integrate_psd(freq, psd)
@@ -163,7 +188,8 @@ def get_mosaic(filename, plot_path="./",
 
     for tel in range(4):
         axarr4[0, tel].set_title(f'UT{tel+1}')
-        accel = fits.getdata(filename, f'MAH-UT{tel+1}')
+        accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
+        # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
             freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
             freq, psd_pos = double_integrate_psd(freq, psd)
