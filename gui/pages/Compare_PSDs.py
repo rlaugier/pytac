@@ -9,20 +9,73 @@ from pytac_vlti_context import rev_search, mirror_indices
 import pytac_vlti_context as ptc
 import matplotlib.pyplot as plt
 
-st.title("Comparing FT PSD from different files")
+st.title("Creating mosaic plots")
 tab_names = ["Setting",
     "Colors",
     "Comparison",
     "Comparison MC"]
 tabs = st.tabs(tab_names)
 
+def get_std(x, sig_x, y, sig_y):
+    x_mc = np.random.normal(loc=x, scale=sig_x, size=(1000, x.shape[0]))
+    y_mc = np.random.normal(loc=y, scale=sig_y, size=(1000, y.shape[0]))
+    x_over_y = x_mc/y_mc
+    amean, botq, topq = np.mean(x_over_y, axis=0),\
+                        np.quantile(x_over_y,0.32, axis=0),\
+                        np.quantile(x_over_y,0.68, axis=0)
+    return amean, botq, topq
+def get_mc(x, sig_x, y, sig_y, n_traces):
+    x_mc = np.random.normal(loc=x, scale=sig_x, size=(n_traces, x.shape[0]))
+    y_mc = np.random.normal(loc=y, scale=sig_y, size=(n_traces, y.shape[0]))
+    x_over_y = x_mc/y_mc
+    x_over_y = np.where(x_over_y>0, x_over_y,  np.nan)
+
+    return x_over_y
+
+
+def show_and_save(figure, name):
+    st.pyplot(figure)
+    # if st.button("Save the plot", key=f"button_save{i}"):
+    format = st.selectbox("Format to save", options=["pdf", "png"], key=f"format_{name.strip()}")
+    if format is not None:
+        with io.BytesIO() as buffer:
+            figure.savefig(buffer, bbox_inches="tight",format="pdf", dpi=200)
+            st.download_button("Download pdf", data=buffer,
+                        file_name=f"{name.strip()}.pdf",
+                        key=f"dl_button{name.strip()}")
+    #          "C0",
+    #          "C0",
+    #          "C0",
+    #          "C1",
+    #          "C1",
+    #          "C1",
+    #          "C1"]
+
+def plot_on_off_times(file_list, headers, colors, group_labels):
+    from matplotlib.dates import DateFormatter
+    time_list = []
+    datetime_list = []
+    for aheader in headers:
+        atime = aheader["DATE"][:-5]
+        time_list.append(atime)
+        datetime_list.append(datetime.fromisoformat(atime))
+    fig_timeline = plt.figure(figsize=(10,1))
+    for i, afile in enumerate(file_list):
+        mylabel = f"{afile.name} ({group_labels[i]})"
+        plt.plot_date(datetime_list[i], 0., fmt="+", tz="UTC",
+                    color=colors[i], label=mylabel)
+        plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m-%dT%H:%M:%S'))
+        plt.gca().xaxis.set_tick_params(rotation=40)
+    plt.legend(fontsize="x-small")
+    plt.xlabel("Acquisition time (UTC)")
+    return fig_timeline, time_list
+    
+    
 with tabs[0]:
     file_list = st.file_uploader("Upload a file for mosaic",
                     accept_multiple_files=True, type=["fits"])
-
-
+    
     typ = 'VIBMAH'
-
     # filenames = [f'./data/TTR-111.0009/on_10.fits',
     #              f'./data/TTR-111.0009/on_11.fits',
     #              f'./data/TTR-111.0009/on_12.fits',
@@ -33,8 +86,10 @@ with tabs[0]:
     #              f'./data/TTR-111.0009/all_PLLs_4.fits',]
 
     st.header("Identifying files")
+    st.write("Identifiers for the data")
     on_label = st.text_input("Ticked are ", value="on")
     off_label = st.text_input("Unticked are: ", value="off")
+    st.write("Pick the color for plotting")
     on_color = st.text_input("Ticked are ", value="C1")
     off_color = st.text_input("Unticked are: ", value="C0")
     colors = []
@@ -56,6 +111,7 @@ with tabs[0]:
             labels.append(off_label)
             group_on.append(thecheck)
     group_on = np.array(group_on)
+    group_labels = np.where(group_on, on_label, off_label)
     # colors = ["C0",
     n_on = np.count_nonzero(group_on)
     n_off = np.count_nonzero(np.logical_not(group_on))
@@ -67,7 +123,7 @@ with tabs[0]:
     mean_matrix = np.concatenate((mean_off[None,:], mean_on[None,:]))
     # mean_matrx: o e (out, experiment)
     # all_pol_ps: e b f (frequency, baseline, experiment)
-
+    
     st.header("Computation preferences")
     nps = st.number_input(label="nperseg", min_value=10, step=1, value=3000)
     target_freq = st.number_input(label="Target frequency", step=0.1, value=200.)
@@ -78,34 +134,21 @@ with tabs[0]:
     ylims = st.number_input(label="y min", value=1.0e-2, format="%.1e"),\
             st.number_input(label="y max", value=2.e1, format="%.1e")
 
-    def show_and_save(figure, name):
-        st.pyplot(figure)
-        # if st.button("Save the plot", key=f"button_save{i}"):
-        format = st.selectbox("Format to save", options=["pdf", "png"], key=f"format_{name.strip()}")
-        if format is not None:
-            with io.BytesIO() as buffer:
-                figure.savefig(buffer, bbox_inches="tight",format="pdf", dpi=200)
-                st.download_button("Download pdf", data=buffer,
-                            file_name=f"{name.strip()}.pdf",
-                            key=f"dl_button{name.strip()}")
-    #          "C0",
-    #          "C0",
-    #          "C0",
-    #          "C1",
-    #          "C1",
-    #          "C1",
-    #          "C1"]
-
 
     all_pol_fs = []
     all_pol_ps = []
+    all_headers = []
 
     if file_list is []:
         exit(0)
     for i, afile in enumerate(file_list):
         #_, ft_state, vib_state = filename.split('/')[-1].split('.')[0].split('_')[:3]
     
-        opdc = fits.getdata(afile, 'OPDC')
+        hdul = fits.open(afile)
+        opdc = hdul["OPDC"].data
+        # opdc = fits.getdata(afile, 'OPDC')
+        all_headers.append(hdul[0].header)
+        hdul.close()
         t = opdc['TIME']
         opd = opdc['OPD']
         kopd = opdc['KALMAN_OPD']
@@ -125,31 +168,32 @@ with tabs[0]:
     all_pol_fs = np.array(all_pol_fs).T
 
 
-    st.write(f"n_on = {n_on}, n_off = {n_off}")
+    st.write(f"{on_label} = {n_on}, {off_label} = {n_off}")
+
+
+
 
     mean_ps = np.einsum("o e , f b e -> f b o",mean_matrix, all_pol_ps)
 
-    def get_std(x, sig_x, y, sig_y):
-        x_mc = np.random.normal(loc=x, scale=sig_x, size=(1000, x.shape[0]))
-        y_mc = np.random.normal(loc=y, scale=sig_y, size=(1000, y.shape[0]))
-        x_over_y = x_mc/y_mc
-        amean, botq, topq = np.mean(x_over_y, axis=0),\
-                            np.quantile(x_over_y,0.32, axis=0),\
-                            np.quantile(x_over_y,0.68, axis=0)
-        return amean, botq, topq
-    def get_mc(x, sig_x, y, sig_y, n_traces):
-        x_mc = np.random.normal(loc=x, scale=sig_x, size=(n_traces, x.shape[0]))
-        y_mc = np.random.normal(loc=y, scale=sig_y, size=(n_traces, y.shape[0]))
-        x_over_y = x_mc/y_mc
-        x_over_y = np.where(x_over_y>0, x_over_y,  np.nan)
-    
-        return x_over_y
+    # Showing the timeline
+    st.header("Timeline")
+    check_plot_times = st.checkbox("Plot the time of acquisitions?")
+    if check_plot_times:
+        from datetime import datetime
+        fig_times, time_list = plot_on_off_times(file_list, headers=all_headers,
+                                colors=colors, group_labels=group_labels)
+        # show_and_save(fig_times, "Timeline")
+        show_and_save(fig_times, "timeline")
+
     offdata = all_pol_ps[:,:,mean_off>0]
     ondata = all_pol_ps[:,:,mean_on>0]
     mean_std = np.array([get_std(np.mean(ondata[:,i], axis=-1), np.std(ondata[:,i], axis=-1)/np.sqrt(ondata.shape[-1]),
                              np.mean(offdata[:,i], axis=-1), np.mean(offdata[:,i], axis=-1)/np.sqrt(offdata.shape[-1])) for i in range(6)]).T
 
 with tabs[1]:
+    st.write("### timeline")
+    if check_plot_times:
+        st.pyplot(fig_times)
     ylims_color = st.number_input(label="y min", value=1.0e-5, format="%.1e"),\
             st.number_input(label="y max", value=1.e0, format="%.1e")
     thealpha = st.number_input(label="alpha", value=0.5, step=0.05)
