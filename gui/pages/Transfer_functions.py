@@ -133,7 +133,7 @@ if st.checkbox("Show power spectrum", value=True):
     my_nps = st.slider("nperseg", value=int(1e3), step=1,
                     min_value=10, max_value=int(1.0e4))
     fig = plt.figure()
-    for i in selected_dl_indices:
+    for i in base_indices:
         plt.plot(*sig.welch(DL_positions[:,i], fs=4000, nperseg=my_nps))
     plt.xscale("log")
     plt.yscale("log")
@@ -197,9 +197,10 @@ amp_on_target = np.abs(TFsig[np.argmin(res),:])
 st.write(f"{amp_on_target[0]:.2e}")
 
 my_columns = st.columns(len(list_indices))
-for i, (u, col, k) in enumerate(zip(list_indices, my_columns,base_indices)):
+for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
     with col:
-        st.write(f"## {pt.DL_names[selected_dl_indices[i]]}")
+        st.write(pt.all_dl_names)
+        st.write(f"## {pt.all_dl_names[selected_dl_indices[i]]}")
         st.write(f"From **{pt.UT_names[u]}**")
         st.write(f"at {target_freq:.1f}Hz")
         st.write(f"$A = $ {amp_on_target[i]:.2e},")
