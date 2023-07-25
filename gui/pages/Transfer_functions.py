@@ -160,10 +160,10 @@ fig_temporal = plt.figure(dpi=200)
 for i, (i_tel, i_dl) in enumerate(zip(base_indices, base_indices)):
     st.write(i)
     plt.plot(master_time_s, sig.detrend(DL_positions[:,i_tel], axis=0),
-            color=f"C{i}", linewidth=1, alpha=0.5, label=f"Positions {pt.UT_names[i_tel]}")
+            color=f"C{i}", linewidth=1, alpha=0.5, label=f"Positions {selected_mah[i]}")
     st.write(pt.all_dl_names[selected_dl_indices[i_dl]])
     plt.plot(master_time_s, sig.detrend(total_DL_commands[:,i_dl], axis=0),
-             color=f"C{i}", linewidth=0.5, linestyle="--", label=f"Commands {pt.DL_names[i_dl]}")
+             color=f"C{i}", linewidth=0.5, linestyle="--", label=f"Commands {selected_dl[i]}")
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
 plt.xlim(time_start, time_end)
