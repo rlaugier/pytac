@@ -62,7 +62,7 @@ list_dl_names = [f"DL{anindex}" for anindex in selected_dl]
 base_indices = np.arange(len(selected_dl_indices))
 # selected_dl_indices = [pt.dl_number2indices[adl] for adl in selected_dl]
 
-if st.checkbox("Show debug lists of selected ports", value=False, ):
+with st.expander("Show debug lists of selected ports", ):
     st.text("selected_mah")
     st.write(selected_mah)
     st.text("selected_dl")
@@ -145,32 +145,45 @@ st.pyplot(fig)
 
 st.header("Temporal signal")
 
-st.write("For the display only:")
+with st.expander("Plot tweaks"):
+    st.write("For the display only:")
 
-time_start = st.slider("Start value", min_value=0., max_value=np.max(master_time_s),
-                value=0., key="time_start_slider")
+    time_start = st.slider("Start value [s]", min_value=0., max_value=np.max(master_time_s),
+                    value=0., key="time_start_slider")
 
-time_end = st.slider("End value", min_value=0., max_value=np.max(master_time_s),
-                value=1.0, key="time_end_slider")
-
-
-st.header("Time series")
-
+    time_end = time_start + st.number_input("Length [s]", min_value=0., max_value=np.max(master_time_s),
+                    value=1.0, key="time_end_slider")
+    enable_local_extrema = st.checkbox("Local y min max")
+    amax, amin = np.nan, np.nan
+    time_mask = (master_time_s>time_start) * (master_time_s<time_end)
+    mask_fig = plt.figure(figsize=(8,0.2))
+    plt.plot(master_time_s, time_mask)
+    st.pyplot(mask_fig)
 fig_temporal = plt.figure(dpi=200)
 for i, (i_tel, i_dl) in enumerate(zip(base_indices, base_indices)):
-    st.write(i)
-    plt.plot(master_time_s, sig.detrend(DL_positions[:,i_tel], axis=0),
-            color=f"C{i}", linewidth=1, alpha=0.5, label=f"Positions {selected_mah[i]}")
-    st.write(pt.all_dl_names[selected_dl_indices[i_dl]])
-    plt.plot(master_time_s, sig.detrend(total_DL_commands[:,i_dl], axis=0),
-             color=f"C{i}", linewidth=0.5, linestyle="--", label=f"Commands {selected_dl[i]}")
+    detrend_pos = sig.detrend(DL_positions[:,i_tel], axis=0)
+    plt.plot(master_time_s, detrend_pos,
+            color=f"C{i}", linewidth=1, alpha=0.5,
+            label=f"Positions {selected_mah[i]}")
+    detrend_commands = sig.detrend(total_DL_commands[:,i_dl], axis=0)
+    plt.plot(master_time_s, detrend_commands,
+            color=f"C{i}", linewidth=0.5, linestyle="--",
+            label=f"Commands {selected_dl[i]}")
+    amax = np.max([np.nan_to_num(amax),
+        np.max(detrend_pos[time_mask]),\
+        np.max(detrend_commands[time_mask])])
+
+    amin = np.min([np.nan_to_num(amin),
+        np.min(detrend_pos[time_mask]),
+        np.min(detrend_commands[time_mask])])
 plt.xlabel("Time [s]")
 plt.ylabel("Position [m]")
 plt.xlim(time_start, time_end)
-plt.legend()
+if enable_local_extrema:
+    plt.ylim(amin, amax)
+plt.legend(fontsize="x-small")
 plt.show()
 st.pyplot(fig_temporal)
-
 
 st.header("Transfer function")
 
@@ -187,6 +200,7 @@ unwrap_phases = np.angle(TFsig) - dewrap
 
 #f_coherences, pos_coherence = sig.coherence(DL_positions[:,u],total_DL_commands[:,u], fs=1/master_dt, nperseg=1e3)
 
+st.write("Pick a frequency of interest for the cursor")
 target_freq = st.slider("Target frequency", min_value=10., max_value=500.,value=150.,
                         step=0.1)
 res = np.abs(f1 - target_freq)
@@ -194,12 +208,9 @@ res = np.abs(f1 - target_freq)
 phase_on_target = unwrap_phases[np.argmin(res),:]
 amp_on_target = np.abs(TFsig[np.argmin(res),:])
 
-st.write(f"{amp_on_target[0]:.2e}")
-
 my_columns = st.columns(len(list_indices))
 for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
     with col:
-        st.write(pt.all_dl_names)
         st.write(f"## {pt.all_dl_names[selected_dl_indices[i]]}")
         st.write(f"From **{pt.UT_names[u]}**")
         st.write(f"at {target_freq:.1f}Hz")
@@ -285,7 +296,7 @@ for i, acol in enumerate(output_columns):
     with acol:
         st.write(f"DL{selected_dl[i]}")
         good_co = pos_coherence[:,i] >= 0.4
-        clean_f = f1[good_co]
+        clean_f = np.abs(f1[good_co])
         clean_TF = TFsig[good_co]
         clean_TF_amp = (np.abs(TFsig))[good_co]
         clean_TF_ph = (np.angle(TFsig) - dewrap)[good_co]
