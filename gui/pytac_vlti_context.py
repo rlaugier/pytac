@@ -28,6 +28,7 @@ all_dl_names2indices = {a:b for a,b in zip(all_dl_names, all_dl_indices)}
 dl2ut = {ut2dl[aut]:aut for aut in ut_indices}
 ut2ind = {aut:anind for aut,anind in zip(ut_indices, np.arange(4))}
 UT_names = [f"MAH-UT{x}" for x in ut_indices]
+MAN_names = UT_names
 DL_names = [f"DL{ut2dl[aut]}" for aut in ut_indices ]
 ut_names2indices = {a:b for a,b in zip(UT_names, ut2dl.keys())}
 dl_names2indices = {a:b for a,b in zip(DL_names, np.arange(len(DL_names)))}
