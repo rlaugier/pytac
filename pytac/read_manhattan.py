@@ -11,7 +11,63 @@ import scipy.interpolate as interp
 #import MNII_functions as mn2
 #import pandas as pd
 
+def plot_waterfall(data, fmin, fmax,
+                 data_names=["Data"],
+                 fs=None, colorbar=False,
+                 allnps=None, show=True,
+                 vmin=0, vmax=None,
+                 target_freq=None,
+                 **kwargs):
+    """
+    Plot a series of aterfall plots for different sampling intervals
 
+    **Arguments** :
+    * data : Series of data (Time at the first index)
+    * fmin : minimum frequency displayd [Hz]
+    * fmax : maximum frequency displayd [Hz]
+    * data_names : Labels for the data channels
+    * fs : Sampling frequency of the data [Hz]
+    * colorbar : (default False)
+    * allnps : a list of nps values to plot for
+    * show : (default True)
+    * vmin : (default 0)
+    * vmax : (defautl None)
+    * kwargs : to be passed to subplots 
+    """
+    print(data[:3,0])
+    fig, axarr = plt.subplots(allnps.shape[0], data.shape[1] ,
+                              sharex=False, sharey=True,
+                              **kwargs)
+
+    for channel_index, data in enumerate(data.T): 
+        for nps_index, anps in enumerate(allnps):
+            plt.sca(axarr[nps_index, channel_index])
+            stf, stt, st_spectra  = sig.stft(data[:], fs=fs, nperseg=anps)
+            for astt, ast_spec in zip(stt[1:-2], st_spectra.T[1:-2]):
+                plt.plot(stf, np.abs(ast_spec), label=f"{astt:.2f}")
+            stt = stt[1:-2]
+            st_spectra = st_spectra[:,1:-2]
+            fmask = (stf>=fmin) * (stf<=fmax)
+
+            extent = (fmin, fmax, stt[-1], stt[0])
+            plt.imshow(np.abs(st_spectra[fmask,:].T),extent=extent,
+                       vmin=vmin, vmax=vmax,
+                       interpolation="nearest")
+            if target_freq is not None:
+                plt.axhvline(target_freq, linewidth=0.5, color="k")
+            if colorbar:
+                plt.colorbar()
+            plt.title(f"{data_names[channel_index]}")
+            if (channel_index == 0):
+                plt.ylabel(f"Time [s](nps={anps:.0f})")
+            if nps_index == allnps.shape[0]:
+                plt.xlabel("Frequency [Hz]")
+            #plt.colorbar()
+            plt.gca().set_aspect("auto")
+    plt.tight_layout()
+    if show:
+        plt.show()
+    return fig
 
 
 def double_integrate_psd(f,acc_psd):

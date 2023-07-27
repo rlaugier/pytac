@@ -42,10 +42,21 @@ def show_info(anhdu):
     with st.expander("More informations"):
         st.write(f"Date of acquisition = {hdul[0].header['DATE-OBS']}")
         st.text([anhdu[0].header])
+def show_and_save(figure, name):
+    st.pyplot(figure)
+    # if st.button("Save the plot", key=f"button_save{i}"):
+    format = st.selectbox("Format to save", options=["pdf", "png"], key=f"format_{name.strip()}")
+    if format is not None:
+        with io.BytesIO() as buffer:
+            figure.savefig(buffer, bbox_inches="tight",format="pdf", dpi=200)
+            st.download_button("Download pdf", data=buffer,
+                        file_name=f"{name.strip()}.pdf",
+                        key=f"dl_button{name.strip()}")
 
 
+with st.sidebar:
+    global_nps = st.number_input("nps (number of samples per segment)", value=10000, step=100)
 st.title("Vibration input-output exploration")
-global_nps = st.number_input("nps (number of samples per segment)", value=1000, step=10)
 
 include_ft = st.checkbox("include FT", value=False)
 
@@ -211,7 +222,7 @@ with tab_global:
         plt.ylabel("Power spectrum [m^2 /Hz]")
         plt.show()
 
-    st.pyplot(fig)
+        st.pyplot(fig)
 
     st.header("Time series")
     with st.expander("Plot tweaks"):
@@ -252,30 +263,11 @@ with tab_global:
         plt.ylim(amin, amax)
     plt.legend(fontsize="x-small")
     plt.show()
-    st.pyplot(fig_temporal)
+    show_and_save(fig_temporal, "fig_temporal")
+    # st.pyplot(fig_temporal)
 
     # ######################################################
-    st.header("Manhattan positions")
-    with st.expander("Plot options"):
-        flims = []
-        ylims = [None,None]
-        cols_f = st.columns(2)
-        with cols_f[0]:
-            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
-            ylims[1] = st.number_input("y max [m]", value=2.0e-7, step=0.5e-7, format="%.e")
-        with cols_f[1]:
-            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
-            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
-            if y_mode_log:
-                 ylims[0] = st.number_input("y min [m]", value=1.0e-9, step=0.5e-7, format="%.e")
-        freq_cols = st.columns(4)
-        ref_freqs = []
-        for i, acol in enumerate(freq_cols):
-            with acol:
-                ref_freqs.append(st.number_input("Frequency input", min_value=0, key=f"frequency_ref_1_{i}"))
-            
-
-    # mirror masking
+with tab_mirror:
     mirrors = np.arange(1, 8+1)
     # mirror_mask = []
     # for i, acol in enumerate(st.columns(len(mirrors))):
@@ -283,9 +275,33 @@ with tab_global:
     #         mirror_mask.append(st.checkbox(label=f"M{mirrors[i]}", key=f"global_check_M_{i+1}"))
     # mirror_mask = np.array(mirror_mask)
     # st.write(mirror_mask)
+    st.header("Manhattan positions")
+    with st.expander("Plot options"):
+        flims = []
+        ylims = [None,None]
+        cols_f = st.columns(2)
+        with cols_f[0]:
+            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
+            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+            if y_mode_log:
+                 ylims[0] = st.number_input("y min [m]", value=1.0e-9, step=0.5e-7, format="%.e")
+            else:
+                ylims[0] = 0
+        with cols_f[1]:
+            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
+            ylims[1] = st.number_input("y max [m]", value=2.0e-7, step=0.5e-7, format="%.e")
+        freq_cols = st.columns(4)
+        ref_freqs = []
+        for i, acol in enumerate(freq_cols):
+            with acol:
+                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+            
+    with st.sidebar:
+        mirror_names_selection = st.multiselect("Which mirrors to include", mirrors, [4])
+        mirror_mask = np.array([(amirror in mirror_names_selection) for amirror in mirrors])
 
-    mirror_names_selection = st.multiselect("Which mirrors to include", mirrors, [4])
-    mirror_mask = np.array([(amirror in mirror_names_selection) for amirror in mirrors])
+        ut_names_selection = st.multiselect("Which mirrors to include", selected_mah, selected_mah)
+        telescope_mask = np.array([(aut_name in ut_names_selection) for aut_name in selected_mah])
 
     mirror_filtered_pos_4567 = []
     for i in base_indices:
@@ -299,10 +315,11 @@ with tab_global:
     psd_rcum = np.sqrt(np.cumsum((psd_mirrors_opl[::-1] * df), axis=0))[::-1]
     
     fig_all_manhattan = plt.figure(dpi=200)
-    for i in range(4):
-        plt.plot(f0, np.sqrt(psd_mirrors_opl[:,i]),
-                 linewidth=1., color=f"C{i}", label=f"{pt.MAN_names[i]}")
-        plt.plot(f0, psd_rcum[:,i], color=f"C{i}", label=f"{pt.MAN_names[i]}")
+    for i, mah_name in enumerate(selected_mah):
+        if telescope_mask[i]:
+            plt.plot(f0, np.sqrt(psd_mirrors_opl[:,i]),
+                     linewidth=1., color=f"C{i}", label=f"{mah_name}")
+            plt.plot(f0, psd_rcum[:,i], color=f"C{i}", label=f"{mah_name}")
         plt.xlim(*flims)
     for afreq in ref_freqs:
         plt.axvline(afreq, linewidth=0.5, color="k")
@@ -310,14 +327,18 @@ with tab_global:
     plt.grid(visible=True)
     plt.yticks(np.arange(0., 2.0e-6, 0.2e-7))
     #plt.yscale("log")
-    plt.title(f"{myfilename}_{mirror_mask.astype(int)}")
+    man_fig_title = f"{myfilename}_{mirror_mask.astype(int)}"
+    plt.title(man_fig_title)
     plt.xscale("log")
     if y_mode_log:
         plt.yscale("log")
     plt.ylim(*ylims)
     plt.legend(fontsize="x-small", loc="upper right")
     # plt.savefig(f"plots/levels_{filepath.stem}_{mirror_mask}.pdf", bbox_inches="tight")
-    st.pyplot(fig_all_manhattan)
+    show_and_save(fig_all_manhattan, f"ut{telescope_mask.astype(int)}{myfilename}_{mirror_mask.astype(int)}")
+
+    st.header("Signal presence")
+    
 
 st.header("Transfer function")
 
