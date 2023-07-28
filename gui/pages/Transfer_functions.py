@@ -164,11 +164,11 @@ for i, (i_tel, i_dl) in enumerate(zip(base_indices, base_indices)):
     detrend_pos = sig.detrend(DL_positions[:,i_tel], axis=0)
     plt.plot(master_time_s, detrend_pos,
             color=f"C{i}", linewidth=1, alpha=0.5,
-            label=f"Positions {selected_mah[i]}")
+            label=f"Positions DL{selected_dl[i]}")
     detrend_commands = sig.detrend(total_DL_commands[:,i_dl], axis=0)
     plt.plot(master_time_s, detrend_commands,
             color=f"C{i}", linewidth=0.5, linestyle="--",
-            label=f"Commands {selected_dl[i]}")
+            label=f"Commands {selected_mah[i]}")
     amax = np.max([np.nan_to_num(amax),
         np.max(detrend_pos[time_mask]),\
         np.max(detrend_commands[time_mask])])

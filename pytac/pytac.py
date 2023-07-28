@@ -496,7 +496,19 @@ def params2source(params, basename="Filter_M0",
         print(src)
     return src
     
-        
+def tf2src(tf, z_control, check=True,
+           basename="Custom_Filter",
+          input_block="In",
+          output_block="Out"):
+    params = tf2tac_sos(tf, z_control, verbose=False)
+    
+    if check:
+        check_tac(params, tf)
+    tac_source = params2source(params, basename=basename, 
+                             input_block=input_block,
+                             output_block=output_block,
+                 printit=False)
+    return tac_source
         
 
 def read_params(params, tacsource=True):
