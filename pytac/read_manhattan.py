@@ -375,12 +375,12 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
     
     # Plotting phase
     plt.subplot(312)
+    plt.plot(f1, -2*np.pi*f1 * meandelay_unknown, "k--",
+             label=f"Expected from {meandelay_unknown*1e3:.2f} ms\n of delay")
     for i in indices:
         plt.plot(f1, np.angle(TFsig2[:,i]), color=f"C{i}", label=f"{labels[i]}", marker="+",
                  markersize=2., markeredgewidth=0.4, linewidth=0.2)
         plt.plot(f1, np.angle(TFsig[:,i]), color=f"C{i}", alpha=0.2, linewidth=0.5)
-    plt.plot(f1, -2*np.pi*f1 * meandelay_unknown, "k--",
-             label=f"Expected from {meandelay_unknown*1e3:.2f} ms\n of delay")
     plt.axhline(0, linewidth=0.5, color="k")
     for afreq in ref_freqs:
         plt.axvline(afreq, linewidth=0.2, color="k")

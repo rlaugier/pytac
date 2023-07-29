@@ -1,0 +1,2 @@
+include pytac/data/tf_123.p
+include pytac/data/tf_manhattan.p

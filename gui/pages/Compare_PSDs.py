@@ -167,13 +167,10 @@ with tabs[0]:
     all_pol_ps = np.array(all_pol_ps).T
     all_pol_fs = np.array(all_pol_fs).T
 
-
     st.write(f"{on_label} = {n_on}, {off_label} = {n_off}")
-
-
-
-
     mean_ps = np.einsum("o e , f b e -> f b o",mean_matrix, all_pol_ps)
+
+    normalization_choice = st.selectbox("Normalization mode", options=["mean","sample"], index=0)
 
     # Showing the timeline
     st.header("Timeline")
@@ -187,7 +184,6 @@ with tabs[0]:
 
     offdata = all_pol_ps[:,:,mean_off>0]
     ondata = all_pol_ps[:,:,mean_on>0]
-    normalization_choice = st.selectbox("Normalization mode", options=["mean","sample"], index=0)
     if normalization_choice == "mean":
         mean_std = np.array([get_std(np.mean(ondata[:,i], axis=-1), np.std(ondata[:,i], axis=-1)/np.sqrt(ondata.shape[-1]),
                                  np.mean(offdata[:,i], axis=-1), np.std(offdata[:,i], axis=-1)/np.sqrt(offdata.shape[-1])) for i in range(6)]).T
@@ -203,7 +199,7 @@ with tabs[1]:
             st.number_input(label="y max", value=1.e0, format="%.1e")
     thealpha = st.number_input(label="alpha", value=0.5, step=0.05)
     thelinewidth = st.number_input(label="line width", value=1., step=0.05)
-    plot_rcumsum = st.checkbox("Plot revers cumulative", value=False,)
+    plot_rcumsum = st.checkbox("Plot reverse cumulative", value=False,)
 
     with st.sidebar: # st.expander("Plot options_1"):
         cols_f = st.columns(2)
