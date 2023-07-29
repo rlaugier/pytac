@@ -191,13 +191,30 @@ with tabs[0]:
                              np.mean(offdata[:,i], axis=-1), np.mean(offdata[:,i], axis=-1)/np.sqrt(offdata.shape[-1])) for i in range(6)]).T
 
 with tabs[1]:
-    st.write("### timeline")
+    st.write("### Colors")
     if check_plot_times:
         st.pyplot(fig_times)
     ylims_color = st.number_input(label="y min", value=1.0e-5, format="%.1e"),\
             st.number_input(label="y max", value=1.e0, format="%.1e")
     thealpha = st.number_input(label="alpha", value=0.5, step=0.05)
     thelinewidth = st.number_input(label="line width", value=1., step=0.05)
+
+    with st.expander("Plot options_1"):
+        cols_f = st.columns(2)
+        flims = []
+        with cols_f[0]:
+            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
+            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+        with cols_f[1]:
+            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
+        freq_cols = st.columns(4)
+        ref_freqs = []
+        for i, acol in enumerate(freq_cols):
+            with acol:
+                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+            
+    
+    
     fig_color, axarr = plt.subplots(6, 1, sharex=True, sharey=True, figsize=(10, 16), dpi=200)
 
     for i, afile in enumerate(file_list):
@@ -207,6 +224,8 @@ with tabs[1]:
             axarr[iBase].plot(all_pol_fs[:,0], all_pol_ps[:,iBase,i], color=colors[i],
                                 alpha=thealpha, linewidth=thelinewidth,
                                 label=afile.name)
+            for afreq in ref_freqs:
+                axarr[iBase].axvline(afreq, linewidth=0.5, color="k")
             # axarr[iBase].plot(x_pol, y_pol, label=f'{filepath.name}',color=colors[i], alpha=0.5)
             # df = np.mean(np.gradient(x_pol))
             # thercum = np.sqrt(np.cumsum(y_pol[::-1]*df, axis=0))[::-1]
@@ -220,13 +239,27 @@ with tabs[1]:
         axarr[iBase].set_ylabel(f"{ptc.base2name[iBase]} [µm²/Hz]")
     axarr[iBase].legend(loc="upper left", fontsize="xx-small")
 
-    axarr[0].set_xlim(fstart, fend)
+    axarr[0].set_xlim(*flims)
     axarr[0].set_ylim(*ylims_color)
     show_and_save(fig_color, "fig_colors")
 
 
 
 with tabs[2]:
+    with st.expander("Plot options"):
+        cols_f = st.columns(2)
+        flims = []
+        with cols_f[0]:
+            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
+            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+        with cols_f[1]:
+            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
+        freq_cols = st.columns(4)
+        ref_freqs = []
+        for i, acol in enumerate(freq_cols):
+            with acol:
+                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+            
     fig_comp_1, axarr = plt.subplots(6, 1, sharex=True, sharey=True, figsize=(10, 14), dpi=200)
     for bl_index in range(6):
         plt.sca(axarr[bl_index])
@@ -240,10 +273,11 @@ with tabs[2]:
         #plt.plot(all_pol_fs[:,0], mean_ps[:,bl_index,1])
         plt.axhline(1., color="k", linewidth=0.5, linestyle=":")
         plt.axvline(75.0, color="k", linewidth=0.2)
-        plt.axvline()
+        for afreq in ref_freqs:
+            plt.axvline(afreq, linewidth=0.5, color="k")
         plt.yscale("log")
         plt.xscale("log")
-        plt.xlim(fstart, fend)
+        plt.xlim(*flims)
         plt.ylim(*ylims)
         plt.ylabel(f"Amplification {ptc.base2name[bl_index]}")
     plt.xlabel("Frequency [Hz]")
