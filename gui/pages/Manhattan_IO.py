@@ -38,10 +38,6 @@ def all_valid(data):
         np.logical_or(isbad, adata)
     return isbad
 
-def show_info(anhdu):
-    with st.expander("More informations"):
-        st.write(f"Date of acquisition = {hdul[0].header['DATE-OBS']}")
-        st.text([anhdu[0].header])
 def show_and_save(figure, name):
     st.pyplot(figure)
     # if st.button("Save the plot", key=f"button_save{i}"):
@@ -60,6 +56,9 @@ st.title("Vibration input-output exploration")
 
 include_ft = st.checkbox("include FT", value=False)
 
+st.header("Uploading a file")
+myfile = st.file_uploader("Choose a file", accept_multiple_files=False, type=["fits"])
+myfilename = None
 
 tab_settings, tab_global,\
 tab_mirror, tab_combinations = st.tabs(["Settings", "Global view",
@@ -114,29 +113,26 @@ with tab_settings:
         st.write(pt.DL_names)
         st.write(list_dl_names)
 
-    st.header("Uploading a file")
-
-    st.write("Upload a file")
-
-    myfile = st.file_uploader("Choose a file", accept_multiple_files=False, type=["fits"])
-    myfilename = None
     if myfile is not None:
         myfilename = myfile.name.split(".")[0]
         hdul = fits.open(myfile)
-        show_info(hdul)
+        anhdu = hdul
+        with st.expander("More informations"):
+            st.write(f"Date of acquisition = {hdul[0].header['DATE-OBS']}")
+            st.text([anhdu[0].header])
+
+            crop_samples = st.number_input(label="Number of samples discarted from \
+                                                each ends (to enable synchronization)",
+                            min_value=0,
+                            value=10,
+                            step=1,)
+    
+            # Creating a master time to resample everything
+            timeref = st.selectbox("Reference for the time", options=pt.UT_names)
     else:
         st.write("No file uploaded")
         exit()
 
-
-    crop_samples = st.number_input(label="Number of samples discarted from \
-                                        each ends (to enable synchronization)",
-                    min_value=0,
-                    value=10,
-                    step=1,)
-    
-    # Creating a master time to resample everything
-    timeref = st.selectbox("Reference for the time", options=pt.UT_names)
     with st.spinner("Processing the data"):
         onetime = hdul[timeref].data["TIME"]
         master_time = np.arange(onetime[crop_samples], np.max(onetime), 250.)[:-crop_samples]
@@ -208,8 +204,6 @@ with tab_settings:
 
     
 with tab_global:
-    show_info(anhdu)
-
     if st.checkbox("Show power spectrum", value=True):
         my_nps = st.slider("nperseg", value=int(1e3), step=1,
                         min_value=10, max_value=int(1.0e4))
@@ -276,33 +270,36 @@ with tab_mirror:
     # mirror_mask = np.array(mirror_mask)
     # st.write(mirror_mask)
     st.header("Manhattan positions")
-    with st.expander("Plot options"):
-        flims = []
-        ylims = [None,None]
-        cols_f = st.columns(2)
-        with cols_f[0]:
-            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
-            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
-            if y_mode_log:
-                 ylims[0] = st.number_input("y min [m]", value=1.0e-9, step=0.5e-7, format="%.e")
-            else:
-                ylims[0] = 0
-        with cols_f[1]:
-            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
-            ylims[1] = st.number_input("y max [m]", value=2.0e-7, step=0.5e-7, format="%.e")
-        freq_cols = st.columns(4)
-        ref_freqs = []
-        for i, acol in enumerate(freq_cols):
-            with acol:
-                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+    with st.sidebar:
+        with st.expander("Plot options"):
+            flims = []
+            ylims = [None,None]
+            cols_f = st.columns(2)
+            with cols_f[0]:
+                flims.append(st.number_input("f start [Hz]", value=40.0, step=10.))
+                y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+                if y_mode_log:
+                     ylims[0] = st.number_input("y min [m]", value=1.0e-9, step=0.5e-7, format="%.e")
+                else:
+                    ylims[0] = 0
+            with cols_f[1]:
+                flims.append(st.number_input("F end [Hz]", value=300., step=10.))
+                ylims[1] = st.number_input("y max [m]", value=1.0e-7, step=0.5e-7, format="%.e")
+            # freq_cols = st.columns(4)
+            ref_freqs = []
+            for i, acol in enumerate(range(4)):
+                # with acol:
+                    ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
             
     with st.sidebar:
-        mirror_names_selection = st.multiselect("Which mirrors to include", mirrors, [4])
+        mirror_names_selection = st.multiselect("Which mirrors to include", mirrors, [4,5,6,7])
         mirror_mask = np.array([(amirror in mirror_names_selection) for amirror in mirrors])
 
         ut_names_selection = st.multiselect("Which mirrors to include", selected_mah, selected_mah)
         telescope_mask = np.array([(aut_name in ut_names_selection) for aut_name in selected_mah])
 
+#############################
+# Important computations here
     mirror_filtered_pos_4567 = []
     for i in base_indices:
         aresp = control.forced_response(tf_123, T=master_time_s, U=all_mirrors[:,mirror_mask>0,i].sum(axis=1))
@@ -313,6 +310,29 @@ with tab_mirror:
     df = np.mean(np.gradient(f0))
     # psd_rcum = np.cumsum(psd_mirrors_opl[::-1], axis=0)[::-1]*df
     psd_rcum = np.sqrt(np.cumsum((psd_mirrors_opl[::-1] * df), axis=0))[::-1]
+    vib_on_BL_full_4567 = pt.UT2B.dot(mirror_filtered_pos_4567.T).T
+    #vib_on_BL_full_4567 = vib_on_BL_full_3
+    MAN_DL_commands_on_BL = pt.UT2B.dot(MAN_DL_commands.T).T
+    mirror_filtered_pos_3 = []
+    for i in range(4):
+        aresp = control.forced_response(tf_123, T=master_time_s, U=all_mirrors[:,:3,i].sum(axis=1))
+        mirror_filtered_pos_3.append(aresp.y[0,:])
+    mirror_filtered_pos_3 = np.array(mirror_filtered_pos_3).T
+
+
+
+    mirror_filtered_pos = []
+    for i in range(4):
+        aresp = control.forced_response(tf_123, T=master_time_s, U=all_mirrors[:,:-1,i].sum(axis=1))
+        mirror_filtered_pos.append(aresp.y[0,:])
+    mirror_filtered_pos = np.array(mirror_filtered_pos).T
+
+
+    vib_on_BL_full = pt.UT2B.dot(mirror_filtered_pos.T).T
+    vib_on_BL_full_3 = pt.UT2B.dot(mirror_filtered_pos_3.T).T
+
+
+# Most computation are done
     
     fig_all_manhattan = plt.figure(dpi=200)
     for i, mah_name in enumerate(selected_mah):
@@ -338,6 +358,55 @@ with tab_mirror:
     show_and_save(fig_all_manhattan, f"ut{telescope_mask.astype(int)}{myfilename}_{mirror_mask.astype(int)}")
 
     st.header("Signal presence")
+    
+    tel_index = st.selectbox("Select telescope ", options=base_indices,)
+    fig_presence = plt.figure(dpi=200)
+    plt.subplot(211)
+    plt.title(f"Detecting the presence of output signal to DL {selected_mah[tel_index]}")
+    plt.plot(*sig.welch(mirror_filtered_pos_4567[:,tel_index], fs=1/master_dt, nperseg=global_nps), label="A. Integrated acc.")
+    plt.plot(*sig.welch(MAN_DL_commands[:,tel_index], fs=1/master_dt, nperseg=global_nps), label="B. Commands")
+    plt.plot(*sig.welch(DL_positions[:,tel_index], fs=1/master_dt, nperseg=global_nps), label="C. DL position" )
+    plt.legend(fontsize="x-small")
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.ylabel("PSD")
+    plt.ylim(1e-22, 1e-14)
+    plt.xlim(*flims)
+    plt.subplot(212)
+    plt.plot(*sig.coherence(mirror_filtered_pos_4567[:,tel_index], MAN_DL_commands[:,tel_index], fs=1/master_dt, nperseg=global_nps), label="A<->B")
+    plt.plot(*sig.coherence(mirror_filtered_pos_4567[:,tel_index], DL_positions[:,tel_index], fs=1/master_dt, nperseg=global_nps), label="A<->C")
+    plt.legend(fontsize="x-small")
+    plt.xscale("log")
+    plt.xlim(*flims)
+    plt.ylabel("Coherence")
+    plt.xlabel("Frequency [Hz]")
+    plt.ylim(0., 1.)
+    # plt.savefig(f"plots/UT{tel_index+1}_presence_{myfilename}.pdf", dpi=120, bbox_inches="tight")
+    plt.show()
+
+    show_and_save(fig_presence, name=f"Presence_{myfilename}")
+
+    st.header("Signal coherence")
+    tf_cols = st.columns(2)
+    with tf_cols[0]:
+        nps_TF = st.number_input("nps", value=0.5e4)
+    with tf_cols[1]:
+        threshold = st.number_input("Threshold", value=0.9, step=0.05,
+                                max_value=1., min_value=0.)
+    
+    fig_ptf = pytac.GTF_plot(master_time_s, vib_on_BL_full_4567[:,:] , FT_POL[:,:] ,
+                labels=pt.base2name[:],
+                saveit=False,
+                save_prefix=f"tf_vi2ft_" + man_fig_title,
+                DL_TF_amp_power=np.nan,
+                DL_TF_ph_coeff=np.nan,
+                threshold=threshold,
+                nperseg=nps_TF,
+                flims=flims,
+                amplims=(1e-2,1e2),
+                ref_freqs=ref_freqs)
+    show_and_save(fig_ptf, f"Pseudo_tf_vib2ft_{myfilename}")
+
     
 
 st.header("Transfer function")

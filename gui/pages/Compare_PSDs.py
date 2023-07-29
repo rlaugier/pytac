@@ -63,7 +63,7 @@ def plot_on_off_times(file_list, headers, colors, group_labels):
     for i, afile in enumerate(file_list):
         mylabel = f"{afile.name} ({group_labels[i]})"
         plt.plot_date(datetime_list[i], 0., fmt="+", tz="UTC",
-                    color=colors[i], label=mylabel)
+                    color=colors[i], markersize=4., label=mylabel)
         plt.gca().xaxis.set_major_formatter(DateFormatter('%Y-%m-%dT%H:%M:%S'))
         plt.gca().xaxis.set_tick_params(rotation=40)
     plt.legend(fontsize="x-small")
@@ -187,31 +187,37 @@ with tabs[0]:
 
     offdata = all_pol_ps[:,:,mean_off>0]
     ondata = all_pol_ps[:,:,mean_on>0]
-    mean_std = np.array([get_std(np.mean(ondata[:,i], axis=-1), np.std(ondata[:,i], axis=-1)/np.sqrt(ondata.shape[-1]),
-                             np.mean(offdata[:,i], axis=-1), np.mean(offdata[:,i], axis=-1)/np.sqrt(offdata.shape[-1])) for i in range(6)]).T
+    normalization_choice = st.selectbox("Normalization mode", options=["mean","sample"], index=0)
+    if normalization_choice == "mean":
+        mean_std = np.array([get_std(np.mean(ondata[:,i], axis=-1), np.std(ondata[:,i], axis=-1)/np.sqrt(ondata.shape[-1]),
+                                 np.mean(offdata[:,i], axis=-1), np.std(offdata[:,i], axis=-1)/np.sqrt(offdata.shape[-1])) for i in range(6)]).T
+    elif normalization_choice == "sample":
+        mean_std = np.array([get_std(np.mean(ondata[:,i], axis=-1), np.std(ondata[:,i], axis=-1),
+                                     np.mean(offdata[:,i], axis=-1), np.std(offdata[:,i], axis=-1)) for i in range(6)]).T
 
 with tabs[1]:
-    st.write("### Colors")
+    st.header("Colors")
     if check_plot_times:
         st.pyplot(fig_times)
     ylims_color = st.number_input(label="y min", value=1.0e-5, format="%.1e"),\
             st.number_input(label="y max", value=1.e0, format="%.1e")
     thealpha = st.number_input(label="alpha", value=0.5, step=0.05)
     thelinewidth = st.number_input(label="line width", value=1., step=0.05)
+    plot_rcumsum = st.checkbox("Plot revers cumulative", value=False,)
 
-    with st.expander("Plot options_1"):
+    with st.sidebar: # st.expander("Plot options_1"):
         cols_f = st.columns(2)
         flims = []
         with cols_f[0]:
-            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
+            flims.append(st.number_input("f start [Hz]", value=40., step=10.))
             y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
         with cols_f[1]:
             flims.append(st.number_input("F end [Hz]", value=300., step=10.))
         freq_cols = st.columns(4)
         ref_freqs = []
         for i, acol in enumerate(freq_cols):
-            with acol:
-                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+            # with acol:
+            ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
             
     
     
@@ -227,11 +233,13 @@ with tabs[1]:
             for afreq in ref_freqs:
                 axarr[iBase].axvline(afreq, linewidth=0.5, color="k")
             # axarr[iBase].plot(x_pol, y_pol, label=f'{filepath.name}',color=colors[i], alpha=0.5)
-            # df = np.mean(np.gradient(x_pol))
-            # thercum = np.sqrt(np.cumsum(y_pol[::-1]*df, axis=0))[::-1]
-            # axarr[iBase].plot(x_pol, thercum, color=colors[i], alpha=0.5)
+            if plot_rcumsum:
+                df = np.mean(np.gradient(all_pol_fs[:,0]))
+                thercum = np.sqrt(np.cumsum(all_pol_ps[::-1, iBase, i]*df, axis=0))[::-1]
+                axarr[iBase].plot(all_pol_fs[:,0], thercum, color=colors[i], alpha=0.5)
             plt.xscale("log")
-            plt.yscale("log")
+            if y_mode_log:
+                plt.yscale("log")
             axarr[iBase].axvline(target_freq, color="k", linewidth=0.2)
             #axarr[iBase].axvline(target_freq-1, color="k", linewidth=0.5)
             #axarr[iBase].axvline(target_freq+1, color="k", linewidth=0.5)
@@ -246,19 +254,19 @@ with tabs[1]:
 
 
 with tabs[2]:
-    with st.expander("Plot options"):
-        cols_f = st.columns(2)
-        flims = []
-        with cols_f[0]:
-            flims.append(st.number_input("f start [Hz]", value=1., step=10.))
-            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
-        with cols_f[1]:
-            flims.append(st.number_input("F end [Hz]", value=300., step=10.))
-        freq_cols = st.columns(4)
-        ref_freqs = []
-        for i, acol in enumerate(freq_cols):
-            with acol:
-                ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_1_{i}"))
+    # with st.expander("Plot options"):
+    #     cols_f = st.columns(2)
+    #     flims = []
+    #     with cols_f[0]:
+    #         flims.append(st.number_input("f start [Hz]", value=1., step=10.,key="flim_1"))
+    #         y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log_2" )
+    #     with cols_f[1]:
+    #         flims.append(st.number_input("F end [Hz]", value=300., step=10., key="flims_2"))
+    #     freq_cols = st.columns(4)
+    #     ref_freqs = []
+    #     for i, acol in enumerate(freq_cols):
+    #         with acol:
+    #             ref_freqs.append(st.number_input("Frequency input", min_value=0., key=f"frequency_ref_2_{i}"))
             
     fig_comp_1, axarr = plt.subplots(6, 1, sharex=True, sharey=True, figsize=(10, 14), dpi=200)
     for bl_index in range(6):
