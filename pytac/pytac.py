@@ -14,6 +14,15 @@ s, z = sp.symbols("s, z")
 import graphviz
 import re
 
+def phiu2ab(phiu):
+    """
+    Shortcut to compute the phase gains for PLL phasor.
+
+    **Returns** : (ua, ub)
+    """
+    ua = -np.sin(phiu)
+    ub = np.cos(phiu)
+    return ua, ub
     
 
 class tac_obj(object):
@@ -284,6 +293,7 @@ def replacelines(src, added=[], removed=[], match_names=[],
 def assemble_PLL(pll_params, basename=None, u=None,
              gain=None, phase=None,
              input_block="In", output_block="Out",
+            output_index=1,
             attr_string=" # //color=navyblue",
             mode="string",
             input_filter=None,
@@ -321,10 +331,6 @@ def assemble_PLL(pll_params, basename=None, u=None,
     
     **returns** : Either the  
     * """
-    if "sum_input" in pll_params.keys():
-        output_index = pll_params["sum_input"]
-    else:
-        output_index = 1
     if "input_block" in pll_params.keys():
         input_block = pll_params["input_block"]
     if basename is None:

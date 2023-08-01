@@ -199,14 +199,14 @@ with tabs[1]:
             st.number_input(label="y max", value=1.e0, format="%.1e")
     thealpha = st.number_input(label="alpha", value=0.5, step=0.05)
     thelinewidth = st.number_input(label="line width", value=1., step=0.05)
-    plot_rcumsum = st.checkbox("Plot reverse cumulative", value=False,)
+    plot_rcumsum = st.checkbox("Plot reverse cumulative", value=True,)
 
     with st.sidebar: # st.expander("Plot options_1"):
         cols_f = st.columns(2)
         flims = []
         with cols_f[0]:
             flims.append(st.number_input("f start [Hz]", value=40., step=10.))
-            y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+            y_mode_log = st.checkbox("Log scale", value=True, key="man_pos_log" )
         with cols_f[1]:
             flims.append(st.number_input("F end [Hz]", value=300., step=10.))
         freq_cols = st.columns(4)
@@ -236,11 +236,13 @@ with tabs[1]:
             plt.xscale("log")
             if y_mode_log:
                 plt.yscale("log")
-            axarr[iBase].axvline(target_freq, color="k", linewidth=0.2)
             #axarr[iBase].axvline(target_freq-1, color="k", linewidth=0.5)
             #axarr[iBase].axvline(target_freq+1, color="k", linewidth=0.5)
     for iBase in range(6):
-        axarr[iBase].set_ylabel(f"{ptc.base2name[iBase]} [µm²/Hz]")
+        if plot_rcumsum:
+            axarr[iBase].set_ylabel(f"{ptc.base2name[iBase]} [µm²/Hz]\nRev. cum. [µm]")
+        else:
+            axarr[iBase].set_ylabel(f"{ptc.base2name[iBase]} [µm²/Hz]")
     axarr[iBase].legend(loc="upper left", fontsize="xx-small")
 
     axarr[0].set_xlim(*flims)

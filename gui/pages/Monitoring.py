@@ -15,13 +15,8 @@ import pytac_vlti_context as pt
 import control
 import pickle
 tf_123_file = st.file_uploader("upload tf_123.p", type=["p"])
-tf_man_file = st.file_uploader("upload tf_manhattan.p", type=["p"])
 if tf_123_file is not None:
     tf_123 = pickle.load(tf_123_file)
-else:
-    exit(0)
-if tf_man_file is not None:
-    tf_man = pickle.load(tf_man_file)
 else:
     exit(0)
 
@@ -48,6 +43,289 @@ def show_and_save(figure, name):
             st.download_button("Download pdf", data=buffer,
                         file_name=f"{name.strip()}.pdf",
                         key=f"dl_button{name.strip()}")
+
+pfreqs = np.array([83.0,
+        84.5,
+        85.0,
+        87.0,
+        90.0,
+        95.,
+        100.,
+        110.,
+        120.,
+        166.0,
+        175.0,
+        200.])
+amps_1 = np.array([9.9e-8,
+                9.25e-8,
+                8.6e-8,
+                4.5e-8,
+                1.62e-8,
+                5.3e-9,
+                2.5e-9,
+                9.0e-10,
+                4.3e-10,
+                5.65e-11,
+                4.3e-11,
+                 2.19e-11])
+
+all_PLLs = [[{'FINIT': 150.0,
+               'FMIN': 145.0,
+               'FMAX': 155.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.13333333333333333,
+               'name': 'PLL_1',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 173.0,
+               'FMIN': 168.0,
+               'FMAX': 178.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.11560693641618497,
+               'name': 'PLL_2',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 83.5,
+               'FMIN': 78.5,
+               'FMAX': 88.5,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.23952095808383234,
+               'name': 'PLL_3',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 47.8,
+               'FMIN': 44.8,
+               'FMAX': 50.8,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.4184100418410042,
+               'name': 'PLL_4',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1}],
+             [{'FINIT': 127.5,
+               'FMIN': 125,
+               'FMAX': 145,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 10.0,
+               'PDTAU': 0.1568627450980392,
+               'name': 'PLL_1',
+               'input_block': 'Fork_TF1',
+               'gain': 0.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 100.0,
+               'FMIN': 96.0,
+               'FMAX': 104.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 0.1,
+               'PDTAU': 0.2,
+               'name': 'PLL_2',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 83.5,
+               'FMIN': 80.5,
+               'FMAX': 86.5,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.23952095808383234,
+               'name': 'PLL_3',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 42.0,
+               'FMIN': 37.0,
+               'FMAX': 47.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.47619047619047616,
+               'name': 'PLL_4',
+               'input_block': 'Fork_TF1',
+               'gain': 0.4,
+               'phase': -2.0,
+               'sum_input': 1}],
+             [{'FINIT': 150.0,
+               'FMIN': 145.0,
+               'FMAX': 155.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.13333333333333333,
+               'name': 'PLL_1',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 210.0,
+               'FMIN': 202.0,
+               'FMAX': 218.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.09523809523809523,
+               'name': 'PLL_2',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 81.0,
+               'FMIN': 73.0,
+               'FMAX': 89.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.24691358024691357,
+               'name': 'PLL_3',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 100.0,
+               'FMIN': 96.0,
+               'FMAX': 104.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.2,
+               'name': 'PLL_4',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1}],
+             [{'FINIT': 150.0,
+               'FMIN': 140,
+               'FMAX': 155,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 0.05,
+               'PDTAU': 0.13333333333333333,
+               'name': 'PLL_1',
+               'input_block': 'Fork_TF1',
+               'gain': 0.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 200.0,
+               'FMIN': 195.0,
+               'FMAX': 205.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.1,
+               'name': 'PLL_2',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 100.0,
+               'FMIN': 95.0,
+               'FMAX': 105.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.2,
+               'name': 'PLL_3',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1},
+              {'FINIT': 75.0,
+               'FMIN': 71.0,
+               'FMAX': 79.0,
+               'KP': 2.0,
+               'KI': 0.5,
+               'KLP': 1.0,
+               'PDTAU': 0.26666666666666666,
+               'name': 'PLL_4',
+               'input_block': 'Fork_TF1',
+               'gain': 1.0,
+               'phase': 0.0,
+               'sum_input': 1}]]
+
+x_filter, y_filter = pfreqs/83., amps_1/np.max(amps_1)
+band_filter = interp1d(x_filter, y_filter, kind="linear", bounds_error=False, fill_value=(1., 1e-4))
+def filter_peak(f, amp, f0, band_filter):
+    # print(np.abs(f/f0))
+    amp_out = amp * band_filter(1. + np.abs((f-f0)/f0))
+    return amp_out
+
+
+amps_2 = np.array([1.98e-7,
+                    1.85e-7,
+                    1.72e-7,
+                    9.0e-8,
+                    3.24e-8,
+                    1.065e-8,
+                    5.05e-9,
+                    1.8e-9,
+                    8.65e-10,
+                    1.13e-10,
+                    8.55e-11,
+                    4.375e-11,])
+
+def test_pll_peaks(peaks, PLL_list, rel_amp_margin = 0.05, verbose=False):
+    for apll in PLL_list:
+        pll_info = f"-> **{apll['name']}**\n\n{apll['FMIN']} to {apll['FMAX']} Hz\n\n"
+        pll_active = True
+        if apll["gain"] == 0.:
+            pll_active = False
+        peak_distances = np.abs(peaks[:,0] - apll["FINIT"])
+        peak_rel_distances = peak_distances / (apll["FMAX"] - apll["FMIN"])
+        peak_centered = peak_rel_distances <= 0.1
+        peak_present = peak_rel_distances <= 1.
+        if np.count_nonzero(peak_present) == 0:
+            if pll_active:
+                st.warning(f"{pll_info}warning: no peak found in the interval")
+            else:
+                st.info(f"{pll_info}Deactivated\n\nInfo: no peak found in the interval")
+        elif (np.count_nonzero(peak_present) == 1) and (np.count_nonzero(peak_centered) == 0):
+            st.warning(f"{pll_info}Warning: peak at {peaks[peak_present][0]} poorly centered")
+        if np.count_nonzero(peak_present) > 1:
+            multi_peak=True
+            st.error(f"{pll_info}Warning: extra peak in the filter's band:")
+            st.write("( f [Hz], a [µm] )")
+            st.write(peaks[peak_present])
+        else:
+            multi_peak = False
+
+        for i, apeak in enumerate(peaks):
+            peak_freq = apeak[0]
+            peak_amp = apeak[1]
+            amp_out = filter_peak(peak_freq, peak_amp, apll["FINIT"], band_filter)
+            relative_amp = amp_out/peak_amp
+            if peak_present[i]:
+                if multi_peak:
+                    st.error(f"{pll_info} amp={amp_out:.2f} for {peak_amp:.2f}")
+                    st.write(f"f = {peak_freq:.2f} This is assumed to peak targeted at {apll['FINIT']:.2f}")
+                else:
+                    st.success(f"{pll_info} amp={amp_out:.2f} for {peak_amp:.2f}")
+                    st.write(f"f = {peak_freq:.2f} This is assumed to peak targeted at {apll['FINIT']:.2f}")
+                
+            else:
+                if verbose:
+                    st.write(f"Relative amplitude = {relative_amp:.2f}")
+                if relative_amp >= rel_amp_margin: 
+                    st.error(f"Warning: relative amplitude margin exceeded")
 
 
 with st.sidebar:
@@ -262,6 +540,19 @@ with tab_global:
 
     # ######################################################
 with tab_mirror:
+    st.header("Monitoring")
+    verbose = st.checkbox("Verbose")
+    peaks = np.array([[47.5, 5.],
+                      [82.,10.],
+                      [90.0, 8.0],
+                      [100.,8.]])
+    tel_columns = st.columns(4)
+    for i_col, (acol, pll_list) in enumerate(zip(tel_columns, all_PLLs)):
+        with acol:
+            st.write(f"### UT{i_col+1}")
+            test_pll_peaks(peaks, pll_list, verbose=verbose)
+        
+    
     mirrors = np.arange(1, 8+1)
     # mirror_mask = []
     # for i, acol in enumerate(st.columns(len(mirrors))):
@@ -432,214 +723,4 @@ with tab_mirror:
         for afreq in ref_freqs:
             myindex = np.argmin(np.abs(f1-afreq))
             st.write(f"f = {afreq:.1f}, gain A-> B = {gain_pos_command[myindex]:.2f}, gain B-> A = {gain_pos_dl_pos[myindex]:.2f}")
-        
-
-with tab_gen_tf:
-    st.header("Vib to FT")
-    st.write("Manhattan position to FT pseudo-open-loop")
-    tf_cols = st.columns(2)
-    with tf_cols[0]:
-        nps_TF = st.number_input("nps", value=0.5e4)
-    with tf_cols[1]:
-        threshold = st.number_input("Threshold", value=0.9, step=0.05,
-                                max_value=1., min_value=0.)
-    
-    fig_ptf = pytac.GTF_plot(master_time_s, vib_on_BL_full_4567[:,:] , FT_POL[:,:] ,
-                labels=pt.base2name[:],
-                saveit=False,
-                save_prefix=f"tf_vi2ft_" + man_fig_title,
-                DL_TF_amp_power=np.nan,
-                DL_TF_ph_coeff=np.nan,
-                threshold=threshold,
-                nperseg=nps_TF,
-                flims=flims,
-                amplims=(1e-2,1e2),
-                ref_freqs=ref_freqs)
-    show_and_save(fig_ptf, f"Pseudo_tf_vib2ft_{myfilename}")
-
-    st.header("Vib to command")
-    st.write("Manhattan position to - commands")
-    threshold_2 = st.number_input("Threshold", value=0.6, step=0.05,
-                            max_value=1., min_value=0., key="Threshold_2")
-    
-    fig_pos2command = pytac.GTF_plot(master_time_s, mirror_filtered_pos_4567[:,:] , -1.0e6 * MAN_DL_commands[:,:] ,
-                labels=pt.UT_names[:],
-                saveit=False,
-                save_prefix=f"tf_vi2ft_" + man_fig_title,
-                DL_TF_amp_power=np.nan,
-                DL_TF_ph_coeff=np.nan,
-                threshold=threshold_2,
-                nperseg=nps_TF,
-                flims=flims,
-                amplims=(1e-2,1e2),
-                ref_freqs=ref_freqs)
-    show_and_save(fig_pos2command, f"Pseudo_tf_vib2command_{myfilename}")
-
-    st.header("Vib to DL")
-    st.write("Manhattan position to - DL position")
-    threshold_3 = st.number_input("Threshold", value=0.6, step=0.05,
-                            max_value=1., min_value=0., key="Threshold_3")
-    
-    fig_pos2dl = pytac.GTF_plot(master_time_s, mirror_filtered_pos_4567[:,:] , -1.0e6 * DL_positions[:,:] ,
-                labels=pt.UT_names[:],
-                saveit=False,
-                save_prefix=f"tf_vi2ft_" + man_fig_title,
-                DL_TF_amp_power=np.nan,
-                DL_TF_ph_coeff=np.nan,
-                threshold=threshold_3,
-                nperseg=nps_TF,
-                flims=flims,
-                amplims=(1e-2,1e2),
-                ref_freqs=ref_freqs)
-    show_and_save(fig_pos2dl, f"Pseudo_tf_vib2dl_{myfilename}")
-
-    
-
-st.header("Transfer function")
-
-indices = np.arange(4)
-st.write("list_indices")
-st.write(list_indices)
-alltfs = np.array([pytac.get_TF(master_time_s, total_DL_commands[:,i_tel], DL_positions[:,i_dl],
-                                       get_coh=True) for i_tel, i_dl in zip(base_indices, base_indices)])
-
-f1, TFsig, pos_coherence = alltfs[0,0,:], alltfs[:,1,:].T, alltfs[:,2,:].T
-dewrap = np.pi* np.cumsum(np.gradient(np.angle(TFsig), axis=0)>=3., axis=0)
-
-unwrap_phases = np.angle(TFsig) - dewrap
-
-#f_coherences, pos_coherence = sig.coherence(DL_positions[:,u],total_DL_commands[:,u], fs=1/master_dt, nperseg=1e3)
-
-st.write("Pick a frequency of interest for the cursor")
-target_freq = st.slider("Target frequency", min_value=10., max_value=500.,value=150.,
-                        step=0.1)
-res = np.abs(f1 - target_freq)
-
-phase_on_target = unwrap_phases[np.argmin(res),:]
-amp_on_target = np.abs(TFsig[np.argmin(res),:])
-
-my_columns = st.columns(len(list_indices))
-for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
-    with col:
-        st.write(f"## {pt.all_dl_names[selected_dl_indices[i]]}")
-        st.write(f"From **{pt.UT_names[u]}**")
-        st.write(f"at {target_freq:.1f}Hz")
-        st.write(f"$A = $ {amp_on_target[i]:.2e},")
-        st.write(f"$\\varphi = $ {phase_on_target[i]:.1f} rad")
-        st.write(f"Delay at {target_freq} Hz = {(phase_on_target[i]/(2*np.pi)*1/target_freq):.4f}s")
-delay_func = (unwrap_phases)/(2*np.pi)*1/f1[:,None]
-
-
-flims = (1., 2000)
-fig_tf_1 = plt.figure(figsize=(8,8))
-plt.subplot(311)
-plt.title("Transfer function")
-for i, u in enumerate(list_indices):
-    plt.plot(f1, np.abs(TFsig[:,i]), label=f"DL{selected_dl[i]}({selected_mah[i]})")
-    st.write()
-# plt.plot(lf, ltf_a, label=f"Used last", linestyle="--")
-#plt.plot(shift(master_freqs), shift(np.abs(fft_DL_pos)), label="DL_pos")
-#plt.fill_between(shift(master_mfft_freqs), 1e-2, 1e2, where=mask_ampli, alpha=0.1)
-plt.axvline(target_freq, linewidth=0.5, color="k")
-plt.axhline(1., linewidth=0.5, color="k")
-plt.xlim(flims[0], flims[1])
-plt.ylim(1e-3, 2.)
-#plt.xlabel("Freq [Hz]")
-plt.ylabel("Ampllitude")
-plt.yscale("log")
-plt.xscale("log")
-plt.legend()
-plt.subplot(312)
-for i, u in enumerate(list_indices):
-    plt.plot(f1, unwrap_phases[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
-# plt.plot(lf, ltf_ph, linestyle="--", label=f"Used last")
-#plt.plot(shift(master_freqs), shift(np.abs(fft_DL_pos)), label="DL_pos")
-#plt.fill_between(shift(master_mfft_freqs), -4., 4., where=mask_ampli, alpha=0.1)
-plt.axhline(0, linewidth=0.5, color="k")
-plt.axvline(target_freq, linewidth=0.5, color="k")
-for i, u in enumerate(list_indices):
-    plt.axhline(phase_on_target[i], linewidth=0.5, linestyle="--", color=f"C{i}")
-plt.xlim(flims[0], flims[1])
-#plt.ylim(-12, 1)
-#plt.xlabel("Freq [Hz]")
-plt.ylabel("Phase [rad]")
-#plt.yscale("log")
-plt.xscale("log")
-plt.legend()
-plt.subplot(313)
-for i, u in enumerate(list_indices):
-    plt.plot(f1, pos_coherence[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
-plt.axvline(target_freq, linewidth=0.5, color="k")
-plt.xlim(flims[0], flims[1])
-plt.xlabel("Freq [Hz]")
-plt.ylabel("Coherence")
-#plt.yscale("log")
-plt.xscale("log")
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-
-fig_tf_2 = plt.figure(figsize=(8,3))
-for i, u in enumerate(list_indices):
-    plt.plot(f1, delay_func[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
-marks = (-2.2e-3, -2.6e-3)
-markstyles = ("--", ":")
-for amark, astyle in zip(marks, markstyles):
-    plt.axhline(amark, linewidth=1, linestyle=astyle, color="k")
-    plt.text(2., amark, f"{amark:.2e} s")
-plt.legend(fontsize="x-small")
-plt.xscale("log", )
-plt.xlim(flims[0], flims[1])
-plt.ylim(-5e-3, 0)
-plt.xlabel("Frequency [Hz]")
-plt.ylabel("Delay [s]")
-plt.show()
-
-st.pyplot(fig_tf_1)
-st.pyplot(fig_tf_2)
-
-
-output_columns = st.columns(len(selected_dl))
-for i, acol in enumerate(output_columns):
-    with acol:
-        st.write(f"DL{selected_dl[i]}")
-        good_co = pos_coherence[:,i] >= 0.4
-        clean_f = np.abs(f1[good_co])
-        clean_TF = TFsig[good_co]
-        clean_TF_amp = (np.abs(TFsig))[good_co]
-        clean_TF_ph = (np.angle(TFsig) - dewrap)[good_co]
-
-        with io.BytesIO() as buffer:
-            np.savetxt(fname=buffer, 
-                       header="#Measured DL_transfer function, f[Hz]",
-                      X=clean_f,
-                      delimiter=";")
-            st.download_button(label="Download the frequency file, f[Hz]", data=buffer,
-                                file_name="clean_f.dat")
-
-        with io.BytesIO() as buffer:
-            np.savetxt(fname=buffer, 
-                       header="#Measured DL_transfer function, Amp, cpx",
-                      X=clean_TF,
-                      delimiter=";")
-            st.download_button(label="Download function, Amp, cpx", data=buffer,
-                                file_name="clean_TF.dat")
-            
-        with io.BytesIO() as buffer:
-            np.savetxt(fname=buffer, 
-                       header="#Measured DL_transfer function, Amp, real",
-                      X=clean_TF_amp,
-                      delimiter=";")
-            st.download_button(label="Download function, Amp, real", data=buffer,
-                                file_name="clean_amp.dat")
-
-        with io.BytesIO() as buffer:
-            np.savetxt(fname=buffer, 
-                       header="#Measured DL_transfer function, Phase, [rad]",
-                      X=clean_TF_ph,
-                      delimiter=";")
-            st.download_button(label="Download function, Phase[rad], real", data=buffer,
-                                file_name="clean_ph.dat")
 

@@ -285,7 +285,8 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
             ref_freqs=[],
             amplims=None,
             flims=None,
-            phlims=None):
+            phlims=None,
+            display_gain=False):
     if flims is None:
         flims = (1.0, 300.0)
     if phlims is None:
@@ -363,8 +364,9 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
     for afreq in ref_freqs:
         plt.axvline(afreq, linewidth=0.2, color="k")
     plt.axhline(1., linewidth=0.5, color="k")
-    plt.text(2*flims[0], meangain_unknown, f"Extra gain: {meangain_unknown:.3f}")
-    plt.axhline(meangain_unknown, linestyle="--", linewidth=0.5, color="k")
+    if display_gain:
+        plt.text(2*flims[0], meangain_unknown, f"Extra gain: {meangain_unknown:.3f}")
+        plt.axhline(meangain_unknown, linestyle="--", linewidth=0.5, color="k")
     # plt.plot(f1, dl_tf_amp**DL_TF_amp_power, color="k", alpha=0.5, label="Typical DL amp")
     plt.xlim(*flims)
     plt.ylabel("Ampllitude")
