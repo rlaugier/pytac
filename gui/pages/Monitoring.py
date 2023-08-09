@@ -284,10 +284,16 @@ amps_2 = np.array([1.98e-7,
                     4.375e-11,])
 
 def test_pll_peaks(peaks, PLL_list, rel_amp_margin = 0.05, verbose=False):
+    # st.set_page_config(layout='wide')
     for apll in PLL_list:
-        pll_info = f"-> **{apll['name']}**\n\n{apll['FMIN']} to {apll['FMAX']} Hz\n\n"
+        level = 0
+        main_message = []
+        more_info = []
+        pll_info = f"### {apll['name']}\n\n{apll['FMIN']} to {apll['FMAX']} Hz\n\n"
+        main_message.append(pll_info)
         pll_active = True
         if apll["gain"] == 0.:
+            main_message.append("Deactivated")
             pll_active = False
         peak_distances = np.abs(peaks[:,0] - apll["FINIT"])
         peak_rel_distances = peak_distances / (apll["FMAX"] - apll["FMIN"])
@@ -295,16 +301,19 @@ def test_pll_peaks(peaks, PLL_list, rel_amp_margin = 0.05, verbose=False):
         peak_present = peak_rel_distances <= 1.
         if np.count_nonzero(peak_present) == 0:
             if pll_active:
-                st.warning(f"{pll_info}warning: no peak found in the interval")
+                level += 1
+                main_message.append("Warning: no peak found in the interval")
             else:
-                st.info(f"{pll_info}Deactivated\n\nInfo: no peak found in the interval")
+                main_message.append("Info: no peak found in the interval")
         elif (np.count_nonzero(peak_present) == 1) and (np.count_nonzero(peak_centered) == 0):
-            st.warning(f"{pll_info}Warning: peak at {peaks[peak_present][0]} poorly centered")
+            level += 1            
+            main_message.append(f"Warning: peak at {peaks[peak_present][0]} poorly centered")
         if np.count_nonzero(peak_present) > 1:
-            multi_peak=True
-            st.error(f"{pll_info}Warning: extra peak in the filter's band:")
-            st.write("( f [Hz], a [µm] )")
-            st.write(peaks[peak_present])
+            level += 2
+            multi_peak = True
+            main_message.append(f"**Warning**: **multiple peaks** in the filter's band:")
+            more_info.append("( f [Hz], a [µm] )")
+            more_info.append(peaks[peak_present])
         else:
             multi_peak = False
 
@@ -314,18 +323,33 @@ def test_pll_peaks(peaks, PLL_list, rel_amp_margin = 0.05, verbose=False):
             amp_out = filter_peak(peak_freq, peak_amp, apll["FINIT"], band_filter)
             relative_amp = amp_out/peak_amp
             if peak_present[i]:
-                if multi_peak:
-                    st.error(f"{pll_info} amp={amp_out:.2f} for {peak_amp:.2f}")
-                    st.write(f"f = {peak_freq:.2f} This is assumed to peak targeted at {apll['FINIT']:.2f}")
+                if not peak_centered[i]:
+                    main_message.append("**Warning**: peak is **poorly centered**\namp={amp_out:.2f} for {peak_amp:.2e}")
+                    more_info.append(f"Peak at {peak_freq:.2f}Hz was targeted at {apll['FINIT']:.2f}Hz")
                 else:
-                    st.success(f"{pll_info} amp={amp_out:.2f} for {peak_amp:.2f}")
-                    st.write(f"f = {peak_freq:.2f} This is assumed to peak targeted at {apll['FINIT']:.2f}")
+                    main_message.append(f" amp={amp_out:.2f} for {peak_amp:.2e}")
+                    main_message.append(f"f = {peak_freq:.2f} was targeted at {apll['FINIT']:.2f}")
                 
             else:
                 if verbose:
-                    st.write(f"Relative amplitude = {relative_amp:.2f}")
+                    more_info.append(f"{peak_freq}Hz: relative amplitude = {relative_amp:.3f}/{rel_amp_margin:.3f}")
                 if relative_amp >= rel_amp_margin: 
-                    st.error(f"Warning: relative amplitude margin exceeded")
+                    level += 2
+                    main_message.append(f"Warning: relative amplitude margin exceeded")
+                    more_info.append(f"The peak at {peak_freq:.1f} is too close to {apll['FINIT']:.2e} with amplitude {peak_amp:.2e}")
+        if level < 1 :
+            write_style = st.success
+        elif level == 1:
+            write_style = st.warning
+        elif level >= 2 :
+            write_style = st.error
+        if not pll_active:
+            write_style = st.info
+
+        write_style("\n\n".join(main_message))
+        with st.expander("More info"):
+            for abit in more_info:
+                st.write(abit)
 
 
 with st.sidebar:
@@ -541,16 +565,20 @@ with tab_global:
     # ######################################################
 with tab_mirror:
     st.header("Monitoring")
-    verbose = st.checkbox("Verbose")
-    peaks = np.array([[47.5, 5.],
-                      [82.,10.],
-                      [90.0, 8.0],
-                      [100.,8.]])
+    peaks = np.array([[75.2, 5.],
+                      [80.2, 5.],
+                      [83.5, 3.],
+                      [100.5,10.],
+                      [150.1, 8.0],
+                      [200.2,8.]])
+    with st.expander("Extra tweaks"):
+        verbose = st.checkbox("Verbose")
+        my_relative_margin = st.number_input("Max relative amplitude tolerated", value=0.05)
     tel_columns = st.columns(4)
     for i_col, (acol, pll_list) in enumerate(zip(tel_columns, all_PLLs)):
         with acol:
-            st.write(f"### UT{i_col+1}")
-            test_pll_peaks(peaks, pll_list, verbose=verbose)
+            st.write(f"## UT{i_col+1}")
+            test_pll_peaks(peaks, pll_list, verbose=verbose, rel_amp_margin=my_relative_margin)
         
     
     mirrors = np.arange(1, 8+1)
