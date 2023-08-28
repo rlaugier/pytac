@@ -69,6 +69,48 @@ amps_1 = np.array([9.9e-8,
                 4.3e-11,
                  2.19e-11])
 
+def get_pll_filter(fmin, fmax):
+    """
+    Produces a bandpass filter mimicing the input filter
+    of the PLL TAC block.
+
+    **Arguments:**
+
+    * fmin : Lower frequency limit
+    * fmax : Upper frequency limit
+
+    **Returns** the control transfer function
+    """
+    z_control = control.TransferFunction.z # 
+    z_control.dt = 0.25e-3                 # setting the sample period
+    bp_pll = sig.butter(2, (fmin, fmax), btype="bandpass", fs=1/z_control.dt)
+    bandpass_pll = control.tf(*bp_pll, z_control.dt)
+    return bandpass_pll
+
+def check_peaks(fmin, fmax, peak_list, target_peak):
+    """
+    **Arguments:**
+
+    * fmin : Lower frequency limit
+    * fmax : Upper frequency limit
+    * peak_list : lits of tuples for
+      peaks present (frequency[Hz], ampliute)
+    * target_peak : the targetted peak tuple
+      (frequency[Hz], ampliute)
+
+    """
+    bandpass_pll = get_pll_filter(fmin, fmax)
+    # To get the magnitude a <myfrequency> (can be an array) : 
+    peak_ratio = []
+    for afreq, anamp in peak_list: 
+        # Getting the filter gain:
+        amp_out = bandpass_pll.frequency_response(
+                    afreq*(2*np.pi)).magnitude.squeeze()
+        peak_ratio.append(anamp * amp_out / target_peak[1])
+    peak_ratio = np.array(peak_ratio)
+    return peak_ratio
+        
+
 all_PLLs = [[{'FINIT': 150.0,
                'FMIN': 145.0,
                'FMAX': 155.0,
