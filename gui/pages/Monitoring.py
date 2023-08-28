@@ -98,6 +98,9 @@ def check_peaks(fmin, fmax, peak_list, target_peak):
     * target_peak : the targetted peak tuple
       (frequency[Hz], ampliute)
 
+    **Returns:** an array containing the ratio of
+    filtered peak to target peak.
+
     """
     bandpass_pll = get_pll_filter(fmin, fmax)
     # To get the magnitude a <myfrequency> (can be an array) : 
