@@ -201,12 +201,37 @@ unwrap_phases = np.angle(TFsig) - dewrap
 #f_coherences, pos_coherence = sig.coherence(DL_positions[:,u],total_DL_commands[:,u], fs=1/master_dt, nperseg=1e3)
 
 st.write("Pick a frequency of interest for the cursor")
-target_freq = st.slider("Target frequency", min_value=10., max_value=500.,value=150.,
-                        step=0.1)
+# Defining the initial frequency
+if "target_freq_number" not in st.session_state:
+    st.session_state.target_freq_number = 150.
+if "target_freq_slider" not in st.session_state:
+    st.session_state.target_freq_slider = st.session_state.target_freq_number
+def handle_freq_number2slider():
+    st.session_state.target_freq_slider = st.session_state.target_freq_number
+def handle_freq_slider2number():
+    st.session_state.target_freq_number = st.session_state.target_freq_slider
+    
+target_freq_slider = st.slider("Target frequency", min_value=10., max_value=500.,
+                        step=0.1,on_change=handle_freq_slider2number, key="target_freq_slider")
+target_freq_number = st.number_input("Frequency target", min_value=10., max_value=500.,
+                            on_change=handle_freq_number2slider, key="target_freq_number")
+
+target_freq = st.session_state.target_freq_number
+
 res = np.abs(f1 - target_freq)
 
 phase_on_target = unwrap_phases[np.argmin(res),:]
 amp_on_target = np.abs(TFsig[np.argmin(res),:])
+
+# Recomendations for PLL parameters
+# pdtau: decay in about 20 periods 
+rec_tau_pd = 20*1/target_freq
+# Inverting the complex TF:
+# Opposite of the phase
+ua = np.cos(-phase_on_target)
+ub = - np.sin(-phase_on_target)
+# Inverse of the gain, negative to cancel-out the signal
+ug = -1/amp_on_target
 
 my_columns = st.columns(len(list_indices))
 for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
@@ -217,6 +242,10 @@ for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
         st.write(f"$A = $ {amp_on_target[i]:.2e},")
         st.write(f"$\\varphi = $ {phase_on_target[i]:.1f} rad")
         st.write(f"Delay at {target_freq} Hz = {(phase_on_target[i]/(2*np.pi)*1/target_freq):.4f}s")
+        st.write(f"$\\tau_{{pd}} = ${rec_tau_pd:.4f}")
+        st.write(f"$u_a = ${ua[i]:.4f}")
+        st.write(f"$u_b = ${ub[i]:.4f}")
+        st.write(f"$u_g = ${ug[i]:.4f}")
 delay_func = (unwrap_phases)/(2*np.pi)*1/f1[:,None]
 
 
@@ -300,6 +329,7 @@ for i, acol in enumerate(output_columns):
         clean_TF = TFsig[good_co]
         clean_TF_amp = (np.abs(TFsig))[good_co]
         clean_TF_ph = (np.angle(TFsig) - dewrap)[good_co]
+
 
         with io.BytesIO() as buffer:
             np.savetxt(fname=buffer, 
