@@ -125,6 +125,8 @@ with tabs[0]:
     # all_pol_ps: e b f (frequency, baseline, experiment)
     
     st.header("Computation preferences")
+    sampling_period = st.number_input("Sampling period [s]", value=1.1e-3, step=1., format="%.2e")
+    end_discard = st.number_input("Samples to discard at end of file", value=0, step=10, format="%d")
     nps = st.number_input(label="nperseg", min_value=10, step=1, value=3000)
     target_freq = st.number_input(label="Target frequency", step=0.1, value=200.)
     st.header("Plotting preferences")
@@ -149,17 +151,17 @@ with tabs[0]:
         # opdc = fits.getdata(afile, 'OPDC')
         all_headers.append(hdul[0].header)
         hdul.close()
-        t = opdc['TIME']
-        opd = opdc['OPD']
-        kopd = opdc['KALMAN_OPD']
-        kpiezo = opdc['KALMAN_PIEZO']
-        vlti = opdc['VLTI_DL_OFFSET']
+        t = opdc['TIME'][:-end_discard]
+        opd = opdc['OPD'][:-end_discard]
+        kopd = opdc['KALMAN_OPD'][:-end_discard]
+        kpiezo = opdc['KALMAN_PIEZO'][:-end_discard]
+        vlti = opdc['VLTI_DL_OFFSET'][:-end_discard]
 
         unwrapped_opd = 2.2 / (2*np.pi) * ((opd - kopd + np.pi) % (2*np.pi) - np.pi + kopd)
         pol = unwrapped_opd + (ptc.T2B @ (kpiezo - vlti*2*np.pi/2.2e-6).T).T
         one_pol_vector = []
         for apol in pol.T:
-            af, aps = sig.welch(apol, fs=1/0.0011, nperseg=nps, detrend='linear')
+            af, aps = sig.welch(apol, fs=1/sampling_period, nperseg=nps, detrend='linear')
             one_pol_vector.append(aps)
         one_pol_vector = np.array(one_pol_vector)
         all_pol_fs.append(af)
