@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sympy as sp
 import scipy.signal as sig
+from scipy.linalg import sqrtm
 import control
 
 import graphviz
@@ -23,7 +24,88 @@ def phiu2ab(phiu):
     ua = -np.sin(phiu)
     ub = np.cos(phiu)
     return ua, ub
+
+def get_A_levy(cgains, freqs, order):
+    """
+    Builds the A matrix for a Levy fit of a transfer function based
+    on frequency responce
+    **Arguments**:
     
+    * `cgains` : [array-like] Complex gain vector for each frequency sample
+    * `freqs` : [array-like] Frequency samples at which
+      the complex gain is provided
+    * `order` : [int] The order of the fit
+    
+    **Returns**: 
+    * A : [2d array] the matrix $b = A.x+\epsilon$
+    """
+    myom = 2*np.pi*freqs
+    mys = 1j*myom
+    myns = np.arange(order)
+    mysa = mys[:,None]**myns[None,:]
+    mysb = - cgains[:,None] * mys[:,None]**myns[None,1:]
+    # print("mysa",mysa.shape)
+    # print("mysb", mysb.shape)
+    myA = np.concatenate((mysa, mysb), axis=1)
+    return myA
+
+def get_levy(cgain, freqs, order):
+    """
+    get_levy: 
+    Gets the least squares fit of a transfer function
+    based on the frequency response using the Levy method [Levy 1959].
+
+    **Arguments** :
+
+    * `cgains` : [array-like] Complex gain vector for each frequency sample
+    * `freqs` : [array-like] Frequency samples at which
+      the complex gain is provided
+    * `order` : [int] The order of the fit
+
+    **returns** : 
+    * a `control.TransferFunction` object containing the fitted TF.
+    """
+    A = get_A_levy(cgain, freqs, order)
+    B = np.linalg.inv((A.T.dot(A))).dot(A.T)
+    myx = B.dot(cgain)
+    mynum = np.flip(myx[:order])
+    myden = np.flip(np.concatenate(([1], myx[order:])))
+    mytf = control.tf(mynum, myden)
+    return mytf
+
+def get_weighted_levy(cgain, freqs, order, sig):
+    """
+    get_weighted_levy: 
+    Gets the least squares fit of a transfer function
+    based on the frequency response, with a weighted Levy method
+
+    **Arguments** :
+
+    * `cgains` : [array-like] Complex gain vector for each frequency sample
+    * `freqs` : [array-like] Frequency samples at which
+      the complex gain is provided
+    * `order` : [int] The order of the fit
+    * `sig`   : [numpy array] standard deviation of the frequency samples
+
+    **returns** : 
+    * a `control.TransferFunction` object containing the fitted TF.
+    """
+    if len(sig.shape) == 2:
+        # Covariance matrix
+        Sigma = sig
+    elif len(sig.shape) == 1:
+        # Standard deviations
+        Sigma = np.diag(sig**2)
+    else:
+        raise ValueError("Wrong dimension for sig")
+    W = sqrtm(np.linalg.inv(Sigma))
+    A = get_A_levy(cgain, freqs, order)
+    B = np.linalg.inv((A.T.dot(W.dot(A)))).dot(A.T)
+    myx = B.dot(W.dot(cgain))
+    mynum = np.flip(myx[:order])
+    myden = np.flip(np.concatenate(([1], myx[order:])))
+    mytf = control.tf(mynum, myden)
+    return mytf
 
 class tac_obj(object):
     """
@@ -585,16 +667,19 @@ def check_tac(tac_array, original_tf, zc=z_control):
 
 def get_stable_approx_inverse(atf, verbose=False, z=z,
                              z_control=z_control,
-                              regularize=True):
+                              regularize=True, 
+                              fmax=None):
     """
     Produces an approximate inverse following the method in Maggio2020
     
-    *Parameters:*
+    **Parameters** :
+    
     * atf   : transfer function of the actuator.
     * verbose: if `True`, will plot some information
     * z     : The sympy symbol to use for manipulating the transfer function
       internally
     * regulariz: If `True`, will add a delay to try to make the function causal
+    * fmax: Used for the verbose
     
     """
     B = control.tf(atf.num, 1, z_control.dt)
