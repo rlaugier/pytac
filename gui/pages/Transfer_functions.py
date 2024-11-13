@@ -28,6 +28,7 @@ def all_valid(data):
 
 
 
+
 st.title("Transfer function computation")
 
 
@@ -50,15 +51,15 @@ for i_col, acol in enumerate(columns):
         else:
             selected_mah.append(my_selected_tel)
         if maskit:
-            my_selected_dl = st.selectbox(label="DL :", options=pt.all_dl,
+            my_selected_dl = st.selectbox(label="DL :", options=pt.all_dl_names + pt.all_bcddl_names,
                 index=pt.ut2dl[pt.ut_names2indices[my_selected_tel]] - 1,
                 key=f"dl_{i_col}", disabled=(not maskit))
             selected_dl.append(my_selected_dl)
         
 ut2dl_new = {a:b for a,b in zip(selected_mah, selected_dl)}
 list_indices = [pt.ut2ind[pt.ut_names2indices[amah]] for amah in selected_mah]
-selected_dl_indices = [pt.all_dl_names2indices[f"DL{anindex}"] for anindex in selected_dl]
-list_dl_names = [f"DL{anindex}" for anindex in selected_dl]
+selected_dl_indices = [pt.all_dl_names2indices[adlname] for adlname in selected_dl]
+list_dl_names = selected_dl
 base_indices = np.arange(len(selected_dl_indices))
 # selected_dl_indices = [pt.dl_number2indices[adl] for adl in selected_dl]
 
@@ -114,8 +115,8 @@ if include_ft:
     FT_DL_commands = np.array([resample(anhdu["OPDC"].data["TIME"], anhdu["OPDC"].data["VLTI_DL_OFFSET"][:,i],
                                     master_time) for i in list_indices]).T
 # Resampling from other source TTR-110.0016
-MAN_DL_commands =  np.array([resample(anhdu[f"MAH-{aname}"].data["TIME"], anhdu[f"MAH-{aname}"].data["DPL"],
-                                    master_time) for aname in list_dl_names]).T
+MAN_DL_commands =  np.array([resample(anhdu[f"{aname}"].data["TIME"], anhdu[f"{aname}"].data["DPL"],
+                                    master_time) for aname in selected_mah]).T
 #Resampling DL positions
 DL_positions =  np.array([resample(anhdu[aname].data["TIME"], anhdu[aname].data["POS"],
                                     master_time) for aname in list_dl_names]).T
@@ -129,9 +130,9 @@ if include_ft:
 st.write(str(hdul.info()))
 
 
+my_nps = st.number_input("nperseg", min_value=10, max_value=None, value=1000, step=1,)
+coh_thr = st.slider("Coherence threshold", min_value=0.0, max_value=1.0, value=0.8)
 if st.checkbox("Show power spectrum", value=True):
-    my_nps = st.slider("nperseg", value=int(1e3), step=1,
-                    min_value=10, max_value=int(1.0e4))
     fig = plt.figure()
     for i in base_indices:
         plt.plot(*sig.welch(DL_positions[:,i], fs=4000, nperseg=my_nps))
@@ -164,7 +165,7 @@ for i, (i_tel, i_dl) in enumerate(zip(base_indices, base_indices)):
     detrend_pos = sig.detrend(DL_positions[:,i_tel], axis=0)
     plt.plot(master_time_s, detrend_pos,
             color=f"C{i}", linewidth=1, alpha=0.5,
-            label=f"Positions DL{selected_dl[i]}")
+            label=f"Positions {selected_dl[i]}")
     detrend_commands = sig.detrend(total_DL_commands[:,i_dl], axis=0)
     plt.plot(master_time_s, detrend_commands,
             color=f"C{i}", linewidth=0.5, linestyle="--",
@@ -191,6 +192,7 @@ indices = np.arange(4)
 st.write("list_indices")
 st.write(list_indices)
 alltfs = np.array([pytac.get_TF(master_time_s, total_DL_commands[:,i_tel], DL_positions[:,i_dl],
+                                       nps=my_nps,
                                        get_coh=True) for i_tel, i_dl in zip(base_indices, base_indices)])
 
 f1, TFsig, pos_coherence = alltfs[0,0,:], alltfs[:,1,:].T, alltfs[:,2,:].T
@@ -234,9 +236,11 @@ ub = - np.sin(-phase_on_target)
 ug = -1/amp_on_target
 
 my_columns = st.columns(len(list_indices))
+st.write(list_indices)
+st.write(selected_dl_indices)
 for i, (u, col, k) in enumerate(zip(list_indices, my_columns, base_indices)):
     with col:
-        st.write(f"## {pt.all_dl_names[selected_dl_indices[i]]}")
+        # st.write(f"## {pt.all_dl_names[selected_dl[i]]}")
         st.write(f"From **{pt.UT_names[u]}**")
         st.write(f"at {target_freq:.1f}Hz")
         st.write(f"$A = $ {amp_on_target[i]:.2e},")
@@ -254,7 +258,7 @@ fig_tf_1 = plt.figure(figsize=(8,8))
 plt.subplot(311)
 plt.title("Transfer function")
 for i, u in enumerate(list_indices):
-    plt.plot(f1, np.abs(TFsig[:,i]), label=f"DL{selected_dl[i]}({selected_mah[i]})")
+    plt.plot(f1, np.abs(TFsig[:,i]), label=f"{selected_dl[i]}({selected_mah[i]})")
     st.write()
 # plt.plot(lf, ltf_a, label=f"Used last", linestyle="--")
 #plt.plot(shift(master_freqs), shift(np.abs(fft_DL_pos)), label="DL_pos")
@@ -270,7 +274,7 @@ plt.xscale("log")
 plt.legend()
 plt.subplot(312)
 for i, u in enumerate(list_indices):
-    plt.plot(f1, unwrap_phases[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
+    plt.plot(f1, unwrap_phases[:,i], label=f"{selected_dl[i]}({selected_mah[i]})")
 # plt.plot(lf, ltf_ph, linestyle="--", label=f"Used last")
 #plt.plot(shift(master_freqs), shift(np.abs(fft_DL_pos)), label="DL_pos")
 #plt.fill_between(shift(master_mfft_freqs), -4., 4., where=mask_ampli, alpha=0.1)
@@ -287,8 +291,9 @@ plt.xscale("log")
 plt.legend()
 plt.subplot(313)
 for i, u in enumerate(list_indices):
-    plt.plot(f1, pos_coherence[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
+    plt.plot(f1, pos_coherence[:,i], label=f"{selected_dl[i]}({selected_mah[i]})")
 plt.axvline(target_freq, linewidth=0.5, color="k")
+plt.axhline(coh_thr, linewidth=0.5, color="k", linestyle="--")
 plt.xlim(flims[0], flims[1])
 plt.xlabel("Freq [Hz]")
 plt.ylabel("Coherence")
@@ -300,18 +305,20 @@ plt.show()
 
 
 
+
 fig_tf_2 = plt.figure(figsize=(8,3))
 for i, u in enumerate(list_indices):
-    plt.plot(f1, delay_func[:,i], label=f"DL{selected_dl[i]}({selected_mah[i]})")
+    plt.plot(f1, delay_func[:,i], label=f"{selected_dl[i]}({selected_mah[i]})")
 marks = (-2.2e-3, -2.6e-3)
 markstyles = ("--", ":")
+plt.axhline(0., color="k", linewidth=0.5)
 for amark, astyle in zip(marks, markstyles):
     plt.axhline(amark, linewidth=1, linestyle=astyle, color="k")
     plt.text(2., amark, f"{amark:.2e} s")
 plt.legend(fontsize="x-small")
 plt.xscale("log", )
 plt.xlim(flims[0], flims[1])
-plt.ylim(-5e-3, 0)
+plt.ylim(-5e-3, 1.0e-3)
 plt.xlabel("Frequency [Hz]")
 plt.ylabel("Delay [s]")
 plt.show()
@@ -323,8 +330,8 @@ st.pyplot(fig_tf_2)
 output_columns = st.columns(len(selected_dl))
 for i, acol in enumerate(output_columns):
     with acol:
-        st.write(f"DL{selected_dl[i]}")
-        good_co = pos_coherence[:,i] >= 0.4
+        st.write(f"{selected_dl[i]}")
+        good_co = pos_coherence[:,i] >= coh_thr
         clean_f = np.abs(f1[good_co])
         clean_TF = TFsig[good_co]
         clean_TF_amp = (np.abs(TFsig))[good_co]

@@ -642,6 +642,7 @@ with tab_mirror:
             with cols_f[0]:
                 flims.append(st.number_input("f start [Hz]", value=40.0, step=10.))
                 y_mode_log = st.checkbox("Log scale", value=False, key="man_pos_log" )
+                custom_title = st.text_input("Custom title", value="default")
                 if y_mode_log:
                      ylims[0] = st.number_input("y min [m]", value=1.0e-9, step=0.5e-7, format="%.e")
                 else:
@@ -707,12 +708,16 @@ with tab_mirror:
         plt.xlim(*flims)
     for afreq in ref_freqs:
         plt.axvline(afreq, linewidth=0.5, color="k")
-    plt.ylabel("PSD [m/Hz^1/2]\n rcumsum [m]")
+    plt.ylabel(f"PSD [m / $\\sqrt{{\\mathrm{{Hz}}}}$]\n Reverse cumulative sum [m]")
+    plt.xlabel("Frequency [Hz]")
     plt.grid(visible=True)
     plt.yticks(np.arange(0., 2.0e-6, 0.2e-7))
     #plt.yscale("log")
     man_fig_title = f"{myfilename}_{mirror_mask.astype(int)}"
-    plt.title(man_fig_title)
+    if custom_title == "default":
+        plt.title(man_fig_title)
+    elif custom_title == "":
+        pass
     plt.xscale("log")
     if y_mode_log:
         plt.yscale("log")

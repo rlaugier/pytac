@@ -25,6 +25,14 @@ def phiu2ab(phiu):
     ub = np.cos(phiu)
     return ua, ub
 
+def hermitian_adjoint(mat):
+    """
+    Returns the Hermitian adjoint of the array
+    using `np.matrix.H`, but returning and array
+    """
+    A = np.matrix(mat)
+    return np.array(A.H)
+
 def get_A_levy(cgains, freqs, order):
     """
     Builds the A matrix for a Levy fit of a transfer function based
@@ -66,7 +74,9 @@ def get_levy(cgain, freqs, order):
     * a `control.TransferFunction` object containing the fitted TF.
     """
     A = get_A_levy(cgain, freqs, order)
-    B = np.linalg.inv((A.T.dot(A))).dot(A.T)
+    # B = np.linalg.inv((A.T.dot(A))).dot(A.T)
+    B = np.linalg.inv( hermitian_adjoint(A).dot(A) ).dot( hermitian_adjoint(A) )
+    
     myx = B.dot(cgain)
     mynum = np.flip(myx[:order])
     myden = np.flip(np.concatenate(([1], myx[order:])))
@@ -100,7 +110,8 @@ def get_weighted_levy(cgain, freqs, order, sig):
         raise ValueError("Wrong dimension for sig")
     W = sqrtm(np.linalg.inv(Sigma))
     A = get_A_levy(cgain, freqs, order)
-    B = np.linalg.inv((A.T.dot(W.dot(A)))).dot(A.T)
+    # B = np.linalg.inv((A.T.dot(W.dot(A)))).dot(A.T)
+    B = np.linalg.inv( hermitian_adjoint(A).dot(A) ).dot( hermitian_adjoint(A) )
     myx = B.dot(W.dot(cgain))
     mynum = np.flip(myx[:order])
     myden = np.flip(np.concatenate(([1], myx[order:])))
@@ -653,7 +664,7 @@ def check_tac(tac_array, original_tf, zc=z_control):
     plt.figure()
     orig_amp, orig_phases, omega = control.bode(original_tf,
                                 Hz=True, label="Original")
-    compiled_amp, compiled_phases, omega = control.bode(tf_combined,
+    compiled_amp, compiled_phases, omega = control.bode(tf_combined, omega,
                                 Hz=True, label="Compiled tf")
     plt.legend()
     plt.show()
@@ -678,7 +689,7 @@ def get_stable_approx_inverse(atf, verbose=False, z=z,
     * verbose: if `True`, will plot some information
     * z     : The sympy symbol to use for manipulating the transfer function
       internally
-    * regulariz: If `True`, will add a delay to try to make the function causal
+    * regularize: If `True`, will add a delay to try to make the function causal
     * fmax: Used for the verbose
     
     """
@@ -694,8 +705,6 @@ def get_stable_approx_inverse(atf, verbose=False, z=z,
     isoutside = np.abs(zeros)> 1
     outsidezeros = zeros[isoutside]
     insidezeros = zeros[np.logical_not(isoutside)]
-    if verbose:
-        print(zeros)
     Asp = control2sp(A, z)
     Bsp = control2sp(B, z)
     Bpoly = sp.Poly(Bsp)
@@ -711,13 +720,22 @@ def get_stable_approx_inverse(atf, verbose=False, z=z,
         d_condition = 1*((degA - degB)>=1 )
     else:
         d_condition = 0
-    degBminus = sp.Poly(sp.expand(Bminus)).degree()
-    degBplus = get_degree_sp(Bplus)
+    print("Bplus", Bplus)
+    print("Bminus", Bminus, type(Bminus))
+    if isinstance(Bminus, sp.core.numbers.Float):
+        degBminus = 0
+    else:
+        degBminus = sp.Poly(sp.expand(Bminus)).degree()
+    if isinstance(Bplus, sp.core.numbers.Float):
+        degPlus = 0
+    else:
+        degBplus = get_degree_sp(Bplus)
     #Asp/(z**d*)
     #print("poles:",B.zeros())
 
     Bstarminus = sp.expand(z**degBminus * Bminus.subs([(z, 1/z)]))
-
+    if verbose:
+        print(Bstarminus)
     Bstarminus_tf = sp2control(Bstarminus, T_symbol=z_control, dt=z_control.dt)
     Bminus_tf = sp2control(Bminus, T_symbol=z_control, dt=z_control.dt)
     if verbose:
@@ -844,13 +862,18 @@ def get_TF(t, x, y, nps=None, axis=0, get_coh=False):
 #import sympy as sp
 #s, z = sp.symbols("s, z")
 def control2sp(atf, asymbol):
+    """
+        Converts python control transfer function into sympy axpression
+    """
     alist = [a * asymbol**i  for i, a in enumerate(np.flip(atf.num[0][0]))]
     num = sp.Add(*alist)
     alist = [a * asymbol**i  for i, a in enumerate(np.flip(atf.den[0][0]))]
     den = sp.Add(*alist)
     return num/den
 def sp2control(atf, T_symbol, dt=1):
-    
+    """
+        Converts sympy expression into a python control transfer function
+    """
     num, den = atf.subs([(T_symbol, dt)]).as_numer_denom()
     if num.as_poly() is not None:
         numfloat = np.array(num.as_poly().all_coeffs(), dtype=np.float64)

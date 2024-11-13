@@ -22,9 +22,16 @@ n_t = 4
 ut2dl = {1:5, 2:2, 3:3, 4:4}
 ut_indices = np.arange(1, 4+1)
 all_dl = np.arange(1, 6+1)
+all_bcddlns = np.arange(1, 8+1)
+all_bcddl = [f"{addl}" for addl in all_bcddlns]
+all_bcddl_names = [f"DDL{abcddl}" for abcddl in all_bcddl]
+all_bcddl_indices = np.arange(11, 18+1)
+del all_bcddlns
 all_dl_indices = np.arange(6)
 all_dl_names = [f"DL{hindex}" for hindex in all_dl]
 all_dl_names2indices = {a:b for a,b in zip(all_dl_names, all_dl_indices)}
+for a, b in zip(all_bcddl_names, all_bcddl_indices):
+    all_dl_names2indices[a] = b
 dl2ut = {ut2dl[aut]:aut for aut in ut_indices}
 ut2ind = {aut:anind for aut,anind in zip(ut_indices, np.arange(4))}
 UT_names = [f"MAH-UT{x}" for x in ut_indices]

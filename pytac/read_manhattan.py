@@ -250,7 +250,7 @@ def get_mosaic(file, plot_path="./",
         for chan in range(12):
             freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
             freq, psd_pos = double_integrate_psd(freq, psd)
-            rc_pos = np.cumsum(psd_pos[::-1])[::-1] * np.diff(freq[1:])[0]
+            rc_pos = np.sqrt(np.cumsum(psd_pos[::-1])[::-1] * np.gradient(freq[:])[0])
             if faulty[chan][tel]==1:
                 axarr4[chan, tel].set_facecolor('orange')
             if faulty[chan][tel]==2:
@@ -373,7 +373,7 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
     plt.yscale("log")
     plt.xscale("log")
     plt.ylim(*amplims)
-    plt.legend(fontsize="x-small", loc="upper right")
+    plt.legend(fontsize="x-small", loc="lower left")
     
     # Plotting phase
     plt.subplot(312)
@@ -391,7 +391,7 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
     plt.ylim(*phlims)
     plt.ylabel("Phase [rad]")
     plt.xscale("log")
-    plt.legend(fontsize="xx-small", loc="upper right")
+    plt.legend(fontsize="xx-small", loc="lower left")
     
     # Plotting coherence
     plt.subplot(313)
@@ -405,7 +405,7 @@ def GTF_plot(master_time_s, sig_a, sig_b, nperseg=2e4, force_indices=False,
     plt.xlabel("Freq [Hz]")
     plt.ylabel("Coherence")
     plt.xscale("log")
-    plt.legend(fontsize="x-small", loc="lower right")
+    plt.legend(fontsize="x-small", loc="lower left")
     #plt.tight_layout()
     if saveit:
         plt.savefig(f"{save_prefix}_{save_suffix}", bbox_inches="tight")
