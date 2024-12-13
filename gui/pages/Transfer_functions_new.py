@@ -118,8 +118,18 @@ if include_ft:
 MAN_DL_commands =  np.array([resample(anhdu[f"{aname}"].data["TIME"], anhdu[f"{aname}"].data["DPL"],
                                     master_time) for aname in selected_mah]).T
 #Resampling DL positions
-DL_positions =  np.array([resample(anhdu[aname].data["TIME"], anhdu[aname].data["POS"],
-                                    master_time) for aname in list_dl_names]).T
+dl_exts = []
+dl_cols = []
+for aname in list_dl_names:
+    if aname in [f"DL{adl}" for adl in pt.all_dl] :
+        dl_exts.append(aname)
+        dl_cols.append("POS")
+    else:
+        dl_exts.append("DDL1")
+        dl_cols.append(aname+"POS")
+DL_positions =  np.array([resample(anhdu[anext].data["TIME"], anhdu[anext].data[acol],
+                            master_time)
+                                for aname, anext, acol in zip(list_dl_names, dl_exts, dl_cols)]).T
 total_DL_commands = MAN_DL_commands # - FT_DL_commands + MAN_DL_commands 
 
 if include_ft:
