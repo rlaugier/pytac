@@ -15,6 +15,41 @@ s, z = sp.symbols("s, z")
 import graphviz
 import re
 
+def get_pl_coeffs_tf(tf, target_freq):
+    """
+        Args:
+            tf
+            target_freq
+        returns:
+    
+            * ug
+            * ua
+            * ub
+    """
+    amp_on_target, phase_on_target, omega = control.bode(tf, omega=2*np.pi*target_freq,
+                                Hz=True, label="Original")
+    plt.close()
+    # Recomendations for PLL parameters
+    # pdtau: decay in about 20 periods 
+    rec_tau_pd = 20*1/target_freq
+    # Inverting the complex TF:
+    # Opposite of the phase
+    ua = np.cos(-phase_on_target)
+    ub = - np.sin(-phase_on_target)
+    # Inverse of the gain, negative to cancel-out the signal
+    ug = -1/amp_on_target
+
+    dicform = { "amp": ug,
+                "neg_1/amp": ug,
+                "phi": phase_on_target,
+                "tau_pd": rec_tau_pd,
+                "ua": ua,
+                "ub": ub,
+                "ug": ug,
+                }
+
+    return dicform
+
 def phiu2ab(phiu):
     """
     Shortcut to compute the phase gains for PLL phasor.

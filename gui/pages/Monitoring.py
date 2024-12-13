@@ -432,15 +432,17 @@ with tab_settings:
             else:
                 selected_mah.append(my_selected_tel)
             if maskit:
-                my_selected_dl = st.selectbox(label="DL :", options=pt.all_dl,
+                my_selected_dl = st.selectbox(label="DL :",
+                    options=pt.all_dl_names + pt.all_bcddl_names,
                     index=pt.ut2dl[pt.ut_names2indices[my_selected_tel]] - 1,
                     key=f"dl_{i_col}", disabled=(not maskit))
                 selected_dl.append(my_selected_dl)
         
     ut2dl_new = {a:b for a,b in zip(selected_mah, selected_dl)}
     list_indices = [pt.ut2ind[pt.ut_names2indices[amah]] for amah in selected_mah]
-    selected_dl_indices = [pt.all_dl_names2indices[f"DL{anindex}"] for anindex in selected_dl]
-    list_dl_names = [f"DL{anindex}" for anindex in selected_dl]
+    selected_dl_indices = [pt.all_dl_names2indices[adlname] for adlname in selected_dl]
+    list_dl_names = selected_dl
+
     base_indices = np.arange(len(selected_dl_indices))
     # selected_dl_indices = [pt.dl_number2indices[adl] for adl in selected_dl]
 
@@ -495,11 +497,24 @@ with tab_settings:
             FT_DL_commands = np.array([resample(anhdu["OPDC"].data["TIME"], anhdu["OPDC"].data["VLTI_DL_OFFSET"][:,i],
                                             master_time) for i in list_indices]).T
         # Resampling from other source TTR-110.0016
-        MAN_DL_commands =  np.array([resample(anhdu[f"MAH-{aname}"].data["TIME"], anhdu[f"MAH-{aname}"].data["DPL"],
-                                            master_time) for aname in list_dl_names]).T
+        MAN_DL_commands =  np.array([resample(anhdu[f"{aname}"].data["TIME"], anhdu[f"{aname}"].data["DPL"],
+                                    master_time) for aname in selected_mah]).T
+
         #Resampling DL positions
-        DL_positions =  np.array([resample(anhdu[aname].data["TIME"], anhdu[aname].data["POS"],
-                                            master_time) for aname in list_dl_names]).T
+        print(pt.all_dl)
+        dl_exts = []
+        dl_cols = []
+        for aname in list_dl_names:
+            if aname in [f"DL{adl}" for adl in pt.all_dl] :
+                dl_exts.append(aname)
+                dl_cols.append("POS")
+            else:
+                dl_exts.append("DDL1")
+                dl_cols.append(aname+"POS")
+        print("exts", dl_exts)
+        print("cols", dl_cols)
+        DL_positions =  np.array([resample(anhdu[anext].data["TIME"], anhdu[anext].data[acol],
+                                            master_time) for aname, anext, acol in zip(list_dl_names, dl_exts, dl_cols)]).T
         total_DL_commands = MAN_DL_commands # - FT_DL_commands + MAN_DL_commands 
 
         if include_ft:
@@ -585,7 +600,7 @@ with tab_global:
         detrend_pos = sig.detrend(DL_positions[:,i_tel], axis=0)
         plt.plot(master_time_s, detrend_pos,
                 color=f"C{i}", linewidth=1, alpha=0.5,
-                label=f"Positions DL{selected_dl[i]}")
+                label=f"Positions {selected_dl[i]}")
         detrend_commands = sig.detrend(total_DL_commands[:,i_dl], axis=0)
         plt.plot(master_time_s, detrend_commands,
                 color=f"C{i}", linewidth=0.5, linestyle="--",
@@ -609,22 +624,6 @@ with tab_global:
 
     # ######################################################
 with tab_mirror:
-    st.header("Monitoring")
-    peaks = np.array([[75.2, 5.],
-                      [80.2, 5.],
-                      [83.5, 3.],
-                      [100.5,10.],
-                      [150.1, 8.0],
-                      [200.2,8.]])
-    with st.expander("Extra tweaks"):
-        verbose = st.checkbox("Verbose")
-        my_relative_margin = st.number_input("Max relative amplitude tolerated", value=0.05)
-    tel_columns = st.columns(4)
-    for i_col, (acol, pll_list) in enumerate(zip(tel_columns, all_PLLs)):
-        with acol:
-            st.write(f"## UT{i_col+1}")
-            test_pll_peaks(peaks, pll_list, verbose=verbose, rel_amp_margin=my_relative_margin)
-        
     
     mirrors = np.arange(1, 8+1)
     # mirror_mask = []
