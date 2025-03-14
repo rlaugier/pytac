@@ -106,7 +106,8 @@ def get_mosaic(file, plot_path="./",
                             plot_suffix=".png",
                             showall=True,
                             saveall=True,
-                            faulty_matrix=None):
+                            faulty_matrix=None,
+                            fs=1000):
     """
             get_mosaic: 
             **Arguments** :
@@ -153,7 +154,7 @@ def get_mosaic(file, plot_path="./",
         faulty = faulty_matrix
 
     # %% Accelerometers [m/s^2]
-
+    myfs = fs
     fig1, axarr1 = plt.subplots(12, 4, sharex=True, sharey=True, figsize=(12, 16))
 
     if isinstance(file, str):
@@ -195,7 +196,7 @@ def get_mosaic(file, plot_path="./",
         accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
         # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
-            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
+            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=myfs, nperseg=2**11)
             if faulty[chan][tel]==1:
                 axarr2[chan, tel].set_facecolor('orange')
             if faulty[chan][tel]==2:
@@ -221,7 +222,7 @@ def get_mosaic(file, plot_path="./",
         accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
         # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
-            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
+            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=myfs, nperseg=2**11)
             freq, psd_pos = double_integrate_psd(freq, psd)
             if faulty[chan][tel]==1:
                 axarr3[chan, tel].set_facecolor('orange')
@@ -248,7 +249,7 @@ def get_mosaic(file, plot_path="./",
         accel = hdul[f"MAH-UT{np.abs(tel+1)}"].data
         # accel = fits.getdata(file, f'MAH-UT{tel+1}')
         for chan in range(12):
-            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=4000, nperseg=2**11)
+            freq, psd = sig.welch(accel['RAW'][:, chan]*coeffs[chan], fs=myfs, nperseg=2**11)
             freq, psd_pos = double_integrate_psd(freq, psd)
             rc_pos = np.sqrt(np.cumsum(psd_pos[::-1])[::-1] * np.gradient(freq[:])[0])
             if faulty[chan][tel]==1:

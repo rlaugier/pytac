@@ -40,6 +40,8 @@ if st.checkbox(label="Grey", value=False):
     all_faulty = np.array(all_faulty).T
     matrix_faulty = np.where(all_faulty, 2, matrix_colors)
     matrix_colors = matrix_faulty
+
+myfs = st.number_input("Sampling frequency [Hz]", value=1000, step=10, format="%f")
     
 st.write("### The colors requested:")
 st.write(matrix_colors)
@@ -47,7 +49,8 @@ st.header("The resutling plots")
 if file_target is not None:
     hdul = fits.open(file_target)
     figs = get_mosaic(hdul, showall=False,
-                saveall=False, faulty_matrix=matrix_colors)
+                saveall=False, faulty_matrix=matrix_colors,
+                fs=myfs)
 
     tab_names = ["Accelerations",
         "Acc. power spectrum",
